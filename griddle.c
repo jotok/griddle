@@ -251,7 +251,7 @@ static grid_viewport_node_t*
 new_grid_viewport_node(grid_viewport_t *vp) {
     grid_viewport_node_t *node = malloc(sizeof(grid_viewport_node_t));
     node->vp = vp;
-    node->parent = node->sibling = node->child = NULL;
+    node->parent = node->gege = node->didi = node->child = NULL;
 
     return node;
 }
@@ -274,7 +274,8 @@ grid_push_viewport(grid_context_t *gr, grid_viewport_t *vp) {
     grid_viewport_node_t *node = new_grid_viewport_node(vp);
 
     if (gr->current_node->child) {
-        node->sibling = gr->current_node->child;
+        gr->current_node->child->didi = node;
+        node->gege = gr->current_node->child;
     }
 
     gr->current_node->child = node;
@@ -438,7 +439,7 @@ grid_viewport_dfs(grid_viewport_node_t *this, const char *name,
             return node;
         } else {
             free_grid_viewport_list(temp_path);
-            this_child = this_child->sibling;
+            this_child = this_child->gege;
         }
     }
 
@@ -511,6 +512,6 @@ new_grid_context(int width_px, int height_px) {
 }
 
 void
-free_grid_context(void) {
+free_grid_context(grid_context_t *gr) {
     // TODO
 }

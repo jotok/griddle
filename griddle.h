@@ -27,7 +27,7 @@ typedef struct {
 
 typedef struct __grid_viewport_node_t {
     grid_viewport_t *vp;
-    struct __grid_viewport_node_t *parent, *sibling, *child;
+    struct __grid_viewport_node_t *parent, *gege, *didi, *child;
 } grid_viewport_node_t;
 
 typedef struct {
