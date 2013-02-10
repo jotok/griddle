@@ -11,8 +11,13 @@
 // units
 //
 
-// NOTE all unit functions allocate memory
-
+/**
+ * @brief Allocate a new `unit_t` with the given type.
+ * @param value The unit value.
+ * @param type The unit type.
+ *
+ * @details Currently supported unit types are "px" and "line".
+ */
 unit_t*
 unit(double value, const char *type) {
     unit_t *u = malloc(sizeof(unit_t));
@@ -23,6 +28,11 @@ unit(double value, const char *type) {
     return u;
 }
 
+/**
+ * @brief Allocate a new `unit_t` representing the sum of its arguments.
+ * @param arg1 A unit.
+ * @param arg2 A unit.
+ */
 unit_t*
 unit_add(unit_t *arg1, unit_t *arg2) {
     unit_t *u = unit(0.0, "+");
@@ -32,6 +42,11 @@ unit_add(unit_t *arg1, unit_t *arg2) {
     return u;
 }
 
+/**
+ * @brief Allocate a new `unit_t` representing the difference of its arguments.
+ * @param arg1 A unit.
+ * @param arg2 A unit.
+ */
 unit_t*
 unit_sub(unit_t *arg1, unit_t *arg2) {
     unit_t *u = unit(0.0, "-");
@@ -41,21 +56,64 @@ unit_sub(unit_t *arg1, unit_t *arg2) {
     return u;
 }
 
-unit_t*
-unit_mul(const unit_t* u, double x) {
-    return unit(u->value * x, u->type);
+/**
+ * @brief Multiply the value of a `unit_t` by a scalar in place.
+ * @param arg1 A unit.
+ * @param arg2 A unit.
+ */
+void
+unit_mul(unit_t* u, double x) {
+    u->value *= x;
 }
 
-unit_t*
-unit_div(const unit_t* u, double x) {
-    return unit(u->value / x, u->type);
+/**
+ * @brief Divide the value of a `unit_t` by a scalar in place.
+ * @param arg1 A unit.
+ * @param arg2 A unit.
+ */
+void
+unit_div(unit_t* u, double x) {
+    u->value /= x;
 }
 
+/**
+ * @brief Deallocate a `unit_t`.
+ * @param free_recursive If true, then this call will recursively free units
+ *   referenced from this unit.
+ */
+void
+free_unit(unit_t *u, bool free_recursive) {
+    if (free_recursive) {
+        if (u->arg1)
+            free_unit(u->arg1, true);
+        if (u->arg2)
+            free_unit(u->arg1, true);
+    }
+
+    free(u);
+}
+
+/**
+ * @brief Convert a `unit_t` to a double representing the value of the value of
+ *   the unit in radians.
+ * @param u A unit.
+ *
+ * @details The types of all units in the tree should be one of "radian[s]",
+ *   "degree[s]", "+", or "-".
+ */
 static double
 unit_to_radians(const unit_t *u) {
-    if (strcmp(u->type, "radians") == 0) {
+    if (strcmp(u->type, "+") == 0) {
+        double x = unit_to_radians(u->arg1);
+        double y = unit_to_radians(u->arg2);
+        return x + y;
+    } else if (strcmp(u->type, "+") == 0) {
+        double x = unit_to_radians(u->arg1);
+        double y = unit_to_radians(u->arg2);
+        return x - y;
+    } else if (strncmp(u->type, "radian", 6) == 0) {
         return u->value;
-    } else if (strcmp(u->type, "degrees") == 0) {
+    } else if (strncmp(u->type, "degree", 6) == 0) {
         return u->value * 2 * Pi / 360.0;
     } else {
         fprintf(stderr, "Warning: can't convert unit '%s' to radians\n", u->type);
@@ -67,18 +125,29 @@ unit_to_radians(const unit_t *u) {
 // graphics parameters
 //
 
-// allocate a new parameter struct and set default values.
-//
+/**
+ * @brief allocate a new parameter struct and set default values.
+ */
 grid_par_t*
 new_grid_par(void) {
     grid_par_t *par = malloc(sizeof(grid_par_t));
+    memset(par->lty, '\0', GridShortNameLength);
     strncpy(par->lty, "solid", GridShortNameLength);
 
     return par;
 }
 
-// safely set the value of a string parameter from a null-terminated string
-//
+/**
+ * @brief Safely set the value of a string parameter from a null-terminated 
+ *   string.
+ * @param dest Destination string.
+ * @param source Source string.
+ *
+ * @details All parameter `char *` fields have length `GridShortNameLength`.
+ *   This function ensures that you don't write past the end of the field. If
+ *   `source` is too long, it's simply cut off, and `dest` retains a
+ *   terminating null character.
+ */
 void
 grid_par_set_str(char *dest, const char *source) {
     strncpy(dest, source, GridShortNameLength - 1);
@@ -88,6 +157,14 @@ grid_par_set_str(char *dest, const char *source) {
 // viewports
 //
 
+/**
+ * @brief Allocate a new `grid_viewport_t`.
+ * @param x The x coordinate of the center of the new viewport.
+ * @param y The y coordinate of the center of the new viewport.
+ * @param width The width of the new viewport.
+ * @param height The height of the new viewport.
+ * @param angle The angle of rotation of the new viewpor.
+ */
 grid_viewport_t*
 new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height, unit_t *angle) {
     grid_viewport_t *vp = malloc(sizeof(grid_viewport_t));
@@ -363,4 +440,9 @@ new_grid_context(int width_px, int height_px) {
     gr->current_node = gr->root_node;
 
     return gr;
+}
+
+void
+free_grid_context(void) {
+    // TODO
 }

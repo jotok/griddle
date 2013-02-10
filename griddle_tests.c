@@ -79,6 +79,8 @@ test_grid_viewport_tree(CuTest *tc) {
     CuAssertPtrEquals(tc, gr->current_node->vp, carrot);
     CuAssertPtrEquals(tc, gr->current_node->sibling->vp, banana);
     CuAssertPtrEquals(tc, gr->current_node->parent->vp, apple);
+
+    free_grid_context(gr);
 }
 
 CuSuite*

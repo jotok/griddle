@@ -47,11 +47,14 @@ unit_add(unit_t*, unit_t*);
 unit_t*
 unit_sub(unit_t*, unit_t*);
 
-unit_t*
-unit_mul(const unit_t*, double);
+void
+unit_mul(unit_t*, double);
 
-unit_t*
-unit_div(const unit_t*, double);
+void
+unit_div(unit_t*, double);
+
+void
+free_unit(unit_t*, bool);
 
 // graphics parameters
 
@@ -100,5 +103,8 @@ grid_seek_viewport(grid_context_t*, const char *name);
 
 grid_context_t*
 new_grid_context(int h_px, int w_px);
+
+void
+free_grid_context(void);
 
 #endif
