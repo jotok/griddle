@@ -81,10 +81,10 @@ new_grid_named_default_viewport(const char*);
 void
 grid_push_viewport(grid_context_t*, grid_viewport_t*);
 
-grid_viewport_t*
+grid_viewport_node_t*
 grid_pop_viewport_1(grid_context_t*);
 
-grid_viewport_t*
+grid_viewport_node_t*
 grid_pop_viewport(grid_context_t*, int);
 
 bool
@@ -94,15 +94,15 @@ int
 grid_up_viewport(grid_context_t*, int);
 
 int
-grid_down_viewport(grid_context_t*, const char *name);
+grid_down_viewport(grid_context_t*, const char*);
 
 int
-grid_seek_viewport(grid_context_t*, const char *name);
+grid_seek_viewport(grid_context_t*, const char*);
 
 // draw functions
 
 grid_context_t*
-new_grid_context(int h_px, int w_px);
+new_grid_context(int, int);
 
 void
 free_grid_context(grid_context_t*);

@@ -286,29 +286,39 @@ grid_push_viewport(grid_context_t *gr, grid_viewport_t *vp) {
 }
 
 /**
- * Pop the current viewport from the tree; its parent becomes the new current
- * viewport. The popped viewport is not deallocated since it may be used
- * elsewhere in the tree.
+ * Pop the current viewport node from the tree; its parent becomes the new
+ * current viewport. The popped node is not deallocated since it may contain
+ * viewports still in use in its tree structure.
  *
  * \return A pointer to the popped viewport.
  */
-grid_viewport_t*
+grid_viewport_node_t*
 grid_pop_viewport_1(grid_context_t *gr) {
-    grid_viewport_node_t *node;
-    grid_viewport_t *vp = NULL;
+    grid_viewport_node_t *node = NULL;
 
     if (gr->current_node == gr->root_node) {
         fprintf(stderr, "Warning: attempted to pop root viewport from the stack in %s:%d\n",
                 __FILE__, __LINE__);
     } else {
-        node = gr->current_node;
-        vp = node->vp;
-        gr->current_node = node->parent;
-        free(node);
         cairo_restore(gr->cr);
+
+        node = gr->current_node;
+        gr->current_node = node->parent;
+
+        if (node->gege) {
+            if (node->didi) {
+                node->didi->gege = node->gege;
+                node->gege->didi = node->didi;
+                node->didi = node->gege = NULL;
+            } else {
+                node->parent->child = node->gege;
+                node->gege->didi = NULL;
+                node->gege = NULL;
+            }
+        }
     }
 
-    return vp;
+    return node;
 }
 
 /**
@@ -320,20 +330,21 @@ grid_pop_viewport_1(grid_context_t *gr) {
  *
  * \return A pointer to a node pointing to the last popped viewport.
  */
-grid_viewport_t*
+grid_viewport_node_t*
 grid_pop_viewport(grid_context_t *gr, int n) {
-    grid_viewport_t *vp, *temp_vp = NULL;
+    grid_viewport_node_t *node, *try_node;
+    node = try_node = NULL;
 
     int i;
     for (i = 0; i < n; i++) {
-        if ((temp_vp = grid_pop_viewport_1(gr)) != NULL)
-            vp = temp_vp;
+        if ((try_node = grid_pop_viewport_1(gr)) != NULL)
+            node = try_node;
         else
-            // grid_pop_viewport_1 will print an error message
+            // grid_up_viewport_1 will print an error message
             break;
     }
 
-    return vp;
+    return node;
 }
 
 bool
@@ -344,8 +355,8 @@ grid_up_viewport_1(grid_context_t *gr) {
         return false;
     }
 
-    gr->current_node = gr->current_node->parent;
     cairo_restore(gr->cr);
+    gr->current_node = gr->current_node->parent;
     return true;
 }
 
