@@ -93,6 +93,7 @@ unit_div(unit_t* u, double x) {
 /**
  * Deallocate a \ref unit_t.
  *
+ * \param u A allocated unit.
  * \param free_recursive If true, then this call will recursively free units
  *   referenced from this unit.
  */
@@ -263,6 +264,7 @@ static void
 grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
     cairo_save(gr->cr);
     cairo_rotate(gr->cr, unit_to_radians(vp->angle));
+    // TODO scale and translate
 }
 
 /**
@@ -347,6 +349,13 @@ grid_pop_viewport(grid_context_t *gr, int n) {
     return node;
 }
 
+/**
+ * Move up one viewport in the viewport tree. Prints a warning and does nothing
+ * if the current viewport is the root viewport.
+ *
+ * \return `true` if successful, `false` if the current viewport is the root
+ * viewport.
+ */
 bool
 grid_up_viewport_1(grid_context_t *gr) {
     if (gr->current_node == gr->root_node) {
@@ -360,8 +369,12 @@ grid_up_viewport_1(grid_context_t *gr) {
     return true;
 }
 
-// returns the number of viewports traversed
-//
+/**
+ * Move up `n` viewports in the viewport tree. Prints a warning if you try to
+ * move beyond the root viewport.
+ *
+ * \return The number of viewports traversed.
+ */
 int
 grid_up_viewport(grid_context_t *gr, int n) {
     int i;
@@ -374,13 +387,17 @@ grid_up_viewport(grid_context_t *gr, int n) {
     return i;
 }
 
-// a type for creating a linked list of viewports, for use in grid_viewport_bfs
-//
-
+/**
+ * A container for a linked list.
+ */
 typedef struct {
-    grid_viewport_node_t *first, *last;
+    grid_viewport_node_t *first, /**< Head of the list */
+                         *last;  /**< Last member of the list */
 } grid_viewport_list_t;
 
+/**
+ * Allocate a new \ref grid_viewport_list_t.
+ */
 static grid_viewport_list_t*
 new_grid_viewport_list(grid_viewport_t *vp) {
     grid_viewport_node_t *node = new_grid_viewport_node(vp);
@@ -391,6 +408,10 @@ new_grid_viewport_list(grid_viewport_t *vp) {
     return list;
 }
 
+/**
+ * Deallocate a \ref grid_viewport_list_t. This frees the nodes but the the
+ * referenced viewports.
+ */
 static void
 free_grid_viewport_list(grid_viewport_list_t *list) {
     grid_viewport_node_t *node, *next_node;
@@ -405,6 +426,9 @@ free_grid_viewport_list(grid_viewport_list_t *list) {
     free(list);
 }
 
+/**
+ * Append a viewport to the end of the list.
+ */
 static void
 grid_viewport_list_append(grid_viewport_list_t *list, grid_viewport_t *vp) {
     grid_viewport_node_t *node = new_grid_viewport_node(vp);
@@ -412,18 +436,22 @@ grid_viewport_list_append(grid_viewport_list_t *list, grid_viewport_t *vp) {
     list->last = node;
 }
 
+/**
+ * Append all the nodes in `list2` to `list1`.
+ */
 static void
 grid_viewport_list_concat(grid_viewport_list_t *list1, grid_viewport_list_t *list2) {
     list1->last->child = list2->first;
    list1->last = list2->last;
 }
 
-// perform a depth first search for a viewport with the given name.
-// *level is incremented each time the algorithm recurses on a child viewport
-// and is set to -1 if no matching viewport is found. path is a list of nodes
-// traversed to find the target. If the return value is NULL, then the values
-// of plevel and path are undefined.
-//
+/**
+ * Perform a depth first search for a viewport with the given name. `*plevel`
+ * is incremented each time the algorithm recurses on a child viewport and is
+ * set to -1 if no matching viewport is found. `path` is a list of nodes
+ * traversed to find the target. If the return value is NULL, then the values
+ * of `*plevel` and `*path` are undefined.
+ */
 static grid_viewport_node_t*
 grid_viewport_dfs(grid_viewport_node_t *this, const char *name, 
                   int *plevel, grid_viewport_list_t *path) 
@@ -457,6 +485,13 @@ grid_viewport_dfs(grid_viewport_node_t *this, const char *name,
     return NULL;
 }
 
+/**
+ * Move down the tree to the viewport with the given name. Prints a warning if
+ * no viewport is found. If the name matches the name of the current node, then
+ * the current viewport doesn't change.
+ *
+ * \return The number of levels traversed, -1 if no viewport found.
+ */
 int
 grid_down_viewport(grid_context_t *gr, const char *name) {
     int n = 0;
@@ -471,12 +506,21 @@ grid_down_viewport(grid_context_t *gr, const char *name) {
         }
 
         gr->current_node = node;
+    } else {
+        fprintf(stderr, "Warning: didn't find viewport with name '%s' (%s:%d)\n",
+                name, __FILE__, __LINE__);
     }
 
     free_grid_viewport_list(path);
     return n;
 }
 
+/**
+ * Perform a depth-first search for a viewport named `name` in the viewport
+ * tree, starting from the root.  Prints a warning if no viewport is found.
+ *
+ * \return The new level in the viewport tree, -1 if no viewport found.
+ */
 int
 grid_seek_viewport(grid_context_t *gr, const char *name) {
     int level = 0;
@@ -495,6 +539,9 @@ grid_seek_viewport(grid_context_t *gr, const char *name) {
         }
 
         gr->current_node = node;
+    } else {
+        fprintf(stderr, "Warning: didn't find viewport with name '%s' (%s:%d)\n",
+                name, __FILE__, __LINE__);
     }
 
     free_grid_viewport_list(path);
@@ -505,6 +552,14 @@ grid_seek_viewport(grid_context_t *gr, const char *name) {
 // draw functions
 //
 
+/**
+ * Allocate a new grid context. The grid context contains a reference to a cairo
+ * image surface with the given width and height that it can draw to.
+ *
+ * \param width_px The width of the underlying image in pixels.
+ * \param height_px The height of the underlying image in pixels.
+ * \return A pointer to the newly allocated \ref grid_context_t.
+ */
 grid_context_t*
 new_grid_context(int width_px, int height_px) {
     grid_context_t *gr = malloc(sizeof(grid_context_t));
@@ -522,6 +577,9 @@ new_grid_context(int width_px, int height_px) {
     return gr;
 }
 
+/**
+ * Deallocate a \ref grid_context_t.
+ */
 void
 free_grid_context(grid_context_t *gr) {
     // TODO

@@ -13,5 +13,8 @@ griddle_tests: $(OBJECTS) CuTest.o
 test: griddle_tests
 	./griddle_tests
 
+doc: griddle.h griddle.c
+	doxygen doxygen_config
+
 clean:
 	rm -rf $(OBJECTS) CuTest.o griddle_tests example hello.png
