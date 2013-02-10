@@ -1,3 +1,10 @@
+/**
+ * \mainpage \notitle
+ *
+ * This project attempts to recreate the semantics of the grid graphics package
+ * for R as a C library using cairo.
+ */
+
 #include "griddle.h"
 
 #include <math.h>
@@ -12,11 +19,10 @@
 //
 
 /**
- * @brief Allocate a new `unit_t` with the given type.
- * @param value The unit value.
- * @param type The unit type.
+ * Allocate a new \ref unit_t with the given type. Currently supported unit types
+ * are "px" and "line".
  *
- * @details Currently supported unit types are "px" and "line".
+ * \return A pointer to the allocated `unit_t`.
  */
 unit_t*
 unit(double value, const char *type) {
@@ -29,9 +35,9 @@ unit(double value, const char *type) {
 }
 
 /**
- * @brief Allocate a new `unit_t` representing the sum of its arguments.
- * @param arg1 A unit.
- * @param arg2 A unit.
+ * Allocate a new \ref unit_t representing the sum of its arguments.
+ *
+ * \return A unit representing arg1 + arg2.
  */
 unit_t*
 unit_add(unit_t *arg1, unit_t *arg2) {
@@ -43,9 +49,9 @@ unit_add(unit_t *arg1, unit_t *arg2) {
 }
 
 /**
- * @brief Allocate a new `unit_t` representing the difference of its arguments.
- * @param arg1 A unit.
- * @param arg2 A unit.
+ * Allocate a new \ref unit_t representing the difference of its arguments.
+ *
+ * \return A unit representing arg1 - arg2.
  */
 unit_t*
 unit_sub(unit_t *arg1, unit_t *arg2) {
@@ -57,28 +63,37 @@ unit_sub(unit_t *arg1, unit_t *arg2) {
 }
 
 /**
- * @brief Multiply the value of a `unit_t` by a scalar in place.
- * @param arg1 A unit.
- * @param arg2 A unit.
+ * Allocate a new \ref unit_t representing the value of `u` multiplied by
+ * a scalar.
+ * 
+ * \return A unit representing u * x.
  */
-void
+unit_t*
 unit_mul(unit_t* u, double x) {
-    u->value *= x;
+    unit_t *v = unit(x, "*");
+    v->arg1 = u;
+
+    return v;
 }
 
 /**
- * @brief Divide the value of a `unit_t` by a scalar in place.
- * @param arg1 A unit.
- * @param arg2 A unit.
+ * Allocate a new \ref unit_t representing the value of `u` divided by
+ * a scalar.
+ * 
+ * \return A unit representing u / x.
  */
-void
+unit_t*
 unit_div(unit_t* u, double x) {
-    u->value /= x;
+    unit_t *v = unit(x, "/");
+    v->arg1 = u;
+
+    return v;
 }
 
 /**
- * @brief Deallocate a `unit_t`.
- * @param free_recursive If true, then this call will recursively free units
+ * Deallocate a \ref unit_t.
+ *
+ * \param free_recursive If true, then this call will recursively free units
  *   referenced from this unit.
  */
 void
@@ -94,12 +109,12 @@ free_unit(unit_t *u, bool free_recursive) {
 }
 
 /**
- * @brief Convert a `unit_t` to a double representing the value of the value of
- *   the unit in radians.
- * @param u A unit.
+ * Convert a \ref unit_t to a double representing the value of the unit in
+ * radians. The types of all units in the tree should be one of "radian[s]",
+ * "degree[s]", "+", or "-".
  *
- * @details The types of all units in the tree should be one of "radian[s]",
- *   "degree[s]", "+", or "-".
+ * \param u A unit.
+ * \return The value of the unit in radians.
  */
 static double
 unit_to_radians(const unit_t *u) {
@@ -111,6 +126,12 @@ unit_to_radians(const unit_t *u) {
         double x = unit_to_radians(u->arg1);
         double y = unit_to_radians(u->arg2);
         return x - y;
+    } else if (strcmp(u->type, "*") == 0) {
+        double x = unit_to_radians(u->arg1);
+        return x * u->value;
+    } else if (strcmp(u->type, "/") == 0) {
+        double x = unit_to_radians(u->arg1);
+        return x / u->value;
     } else if (strncmp(u->type, "radian", 6) == 0) {
         return u->value;
     } else if (strncmp(u->type, "degree", 6) == 0) {
@@ -126,7 +147,9 @@ unit_to_radians(const unit_t *u) {
 //
 
 /**
- * @brief allocate a new parameter struct and set default values.
+ * Allocate a new parameter struct and set default values.
+ *
+ * \returns A pointer to the newly allocated \ref grid_par_t.
  */
 grid_par_t*
 new_grid_par(void) {
@@ -138,15 +161,14 @@ new_grid_par(void) {
 }
 
 /**
- * @brief Safely set the value of a string parameter from a null-terminated 
- *   string.
- * @param dest Destination string.
- * @param source Source string.
+ * Safely set the value of a string parameter from a null-terminated string.
+ * All parameter `char *` fields have length \ref GridShortNameLength.  This
+ * function ensures that you don't write past the end of the field. If `source`
+ * is too long, it's simply cut off, and `dest` retains a terminating null
+ * character.
  *
- * @details All parameter `char *` fields have length `GridShortNameLength`.
- *   This function ensures that you don't write past the end of the field. If
- *   `source` is too long, it's simply cut off, and `dest` retains a
- *   terminating null character.
+ * \param dest Destination string.
+ * \param source Source string.
  */
 void
 grid_par_set_str(char *dest, const char *source) {
@@ -158,12 +180,14 @@ grid_par_set_str(char *dest, const char *source) {
 //
 
 /**
- * @brief Allocate a new `grid_viewport_t`.
- * @param x The x coordinate of the center of the new viewport.
- * @param y The y coordinate of the center of the new viewport.
- * @param width The width of the new viewport.
- * @param height The height of the new viewport.
- * @param angle The angle of rotation of the new viewpor.
+ * Allocate a new \ref grid_viewport_t.
+ *
+ * \param x The x coordinate of the center of the new viewport.
+ * \param y The y coordinate of the center of the new viewport.
+ * \param width The width of the new viewport.
+ * \param height The height of the new viewport.
+ * \param angle The angle of rotation of the new viewpor.
+ * \return A pointer to the newly allocated \ref grid_viewport_t.
  */
 grid_viewport_t*
 new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height, unit_t *angle) {
@@ -180,12 +204,24 @@ new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height, unit_t *a
     return vp;
 }
 
+/**
+ * Allocate a new \ref grid_viewport_t with default values. `x` and `y` are set
+ * to 0 and `width` and `height` are set to 1. All units are npc.
+ *
+ * \return A pointer to the newly allocated \ref grid_viewport_t.
+ */
 grid_viewport_t*
 new_grid_default_viewport() {
     return new_grid_viewport(unit(0, "npc"), unit(0, "npc"), 
                              unit(1, "npc"), unit(1, "npc"), unit(0, "radians"));
 }
 
+/**
+ * Allocate a new \ref grid_viewport_t with the given name. 
+ *
+ * \return A pointer to the newly allocated \ref grid_viewport_t.
+ * \see new_grid_viewport
+ */
 grid_viewport_t*
 new_grid_named_viewport(const char *name, unit_t *x, unit_t *y, 
                         unit_t *width, unit_t *height, unit_t *angle) 
@@ -195,6 +231,12 @@ new_grid_named_viewport(const char *name, unit_t *x, unit_t *y,
     return vp;
 }
 
+/**
+ * Allocate a new \ref grid_viewport_t with the given name and default values.
+ *
+ * \return A pointer to the newly allocated \ref grid_viewport_t.
+ * \see new_grid_named_viewport
+ */
 grid_viewport_t*
 new_grid_named_default_viewport(const char *name) {
     grid_viewport_t *vp = new_grid_default_viewport();
@@ -202,6 +244,9 @@ new_grid_named_default_viewport(const char *name) {
     return vp;
 }
 
+/**
+ * Allocate a new \ref grid_viewport_node_t.
+ */
 static grid_viewport_node_t*
 new_grid_viewport_node(grid_viewport_t *vp) {
     grid_viewport_node_t *node = malloc(sizeof(grid_viewport_node_t));
@@ -211,12 +256,19 @@ new_grid_viewport_node(grid_viewport_t *vp) {
     return node;
 }
 
+/**
+ * Apply the transform described by `vp` to the cairo context.
+ */
 static void
 grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
     cairo_save(gr->cr);
     cairo_rotate(gr->cr, unit_to_radians(vp->angle));
 }
 
+/**
+ * Push a viewport onto the tree. The viewport becomes a leaf of the current
+ * viewport and becomes the new current viewport.
+ */
 void
 grid_push_viewport(grid_context_t *gr, grid_viewport_t *vp) {
     grid_viewport_node_t *node = new_grid_viewport_node(vp);
@@ -232,6 +284,13 @@ grid_push_viewport(grid_context_t *gr, grid_viewport_t *vp) {
     grid_apply_viewport_transform(gr, vp);
 }
 
+/**
+ * Pop the current viewport from the tree; its parent becomes the new current
+ * viewport. The popped viewport is not deallocated since it may be used
+ * elsewhere in the tree.
+ *
+ * \return A pointer to the popped viewport.
+ */
 grid_viewport_t*
 grid_pop_viewport_1(grid_context_t *gr) {
     grid_viewport_node_t *node;
@@ -243,7 +302,7 @@ grid_pop_viewport_1(grid_context_t *gr) {
     } else {
         node = gr->current_node;
         vp = node->vp;
-        gr->current_node = gr->current_node->parent;
+        gr->current_node = node->parent;
         free(node);
         cairo_restore(gr->cr);
     }
@@ -251,6 +310,15 @@ grid_pop_viewport_1(grid_context_t *gr) {
     return vp;
 }
 
+/**
+ * Pop `n` viewports from the tree. The new current viewport is the parent of
+ * the last popped viewport. If there are fewer than `n + 1` levels in the
+ * tree, then an error message is printed and the current viepwort is set to the
+ * root viewport. Popped viewports and the nodes that contain them are not
+ * deallocated.
+ *
+ * \return A pointer to a node pointing to the last popped viewport.
+ */
 grid_viewport_t*
 grid_pop_viewport(grid_context_t *gr, int n) {
     grid_viewport_t *vp, *temp_vp = NULL;

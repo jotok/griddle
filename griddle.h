@@ -47,10 +47,10 @@ unit_add(unit_t*, unit_t*);
 unit_t*
 unit_sub(unit_t*, unit_t*);
 
-void
+unit_t*
 unit_mul(unit_t*, double);
 
-void
+unit_t*
 unit_div(unit_t*, double);
 
 void
@@ -105,6 +105,6 @@ grid_context_t*
 new_grid_context(int h_px, int w_px);
 
 void
-free_grid_context(void);
+free_grid_context(grid_context_t*);
 
 #endif

@@ -15,11 +15,15 @@ test_units(CuTest *tc) {
     CuAssertPtrEquals(tc, u1->arg2, NULL);
 
     unit_t *u3 = unit_mul(u1, 2);
-    CuAssertDblEquals(tc, u3->value, 4, 1e-8);
+    CuAssertDblEquals(tc, u3->value, 2, 1e-8);
+    CuAssertPtrEquals(tc, u3->arg1, u1);
+    CuAssertPtrEquals(tc, u3->arg2, NULL);
     free(u3);
 
     u3 = unit_div(u1, 2);
-    CuAssertDblEquals(tc, u3->value, 1, 1e-8);
+    CuAssertDblEquals(tc, u3->value, 2, 1e-8);
+    CuAssertPtrEquals(tc, u3->arg1, u1);
+    CuAssertPtrEquals(tc, u3->arg2, NULL);
     free(u3);
 
     u3 = unit_add(u1, u2);
