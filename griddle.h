@@ -9,27 +9,45 @@
 
 // types
 
+/**
+ * A value tagged with a unit type. Using units we can specify "5 pixels + 2
+ * lines" and have our program do the right thing.
+ */
 typedef struct __unit_t {
     double value;
     char type[GridShortNameLength];
     struct __unit_t *arg1, *arg2;
 } unit_t;
 
+/**
+ * Graphical parameters.
+ */
 typedef struct {
     char lty[GridShortNameLength];
 } grid_par_t;
 
+/**
+ * A viewport defines a relative coordinate system for drawing on the image
+ * buffer.
+ */
 typedef struct {
     unit_t *x, *y, *width, *height, *angle;
     grid_par_t *par;
     char name[GridLongNameLength];
 } grid_viewport_t;
 
+/**
+ * Nodes wrap viewports to keep track of the viewport tree structure.
+ */
 typedef struct __grid_viewport_node_t {
     grid_viewport_t *vp;
     struct __grid_viewport_node_t *parent, *gege, *didi, *child;
 } grid_viewport_node_t;
 
+/**
+ * A grid context consists of the viewport tree, the current viewport, and
+ * cairo objects used to create the drawing.
+ */
 typedef struct {
     cairo_surface_t *surface;
     cairo_t *cr;

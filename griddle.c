@@ -1,5 +1,5 @@
 /**
- * \mainpage \notitle
+ * \mainpage
  *
  * This project attempts to recreate the semantics of the grid graphics package
  * for R as a C library using cairo.
@@ -474,8 +474,8 @@ grid_viewport_list_concat(grid_viewport_list_t *list1, grid_viewport_list_t *lis
  * Perform a depth first search for a viewport with the given name. `*plevel`
  * is incremented each time the algorithm recurses on a child viewport and is
  * set to -1 if no matching viewport is found. `path` is a list of nodes
- * traversed to find the target. If the return value is NULL, then the values
- * of `*plevel` and `*path` are undefined.
+ * traversed to find the target. If the return value is NULL, then the value of
+ * `*path` is undefined and `*plevel` is set to -1.
  */
 static grid_viewport_node_t*
 grid_viewport_dfs(grid_viewport_node_t *this, const char *name, 
@@ -507,6 +507,7 @@ grid_viewport_dfs(grid_viewport_node_t *this, const char *name,
         }
     }
 
+    *plevel = -1;
     return NULL;
 }
 

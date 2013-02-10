@@ -85,6 +85,28 @@ test_grid_viewport_tree(CuTest *tc) {
     CuAssertPtrEquals(tc, gr->current_node->gege->didi->vp, carrot);
     CuAssertPtrEquals(tc, gr->current_node->parent->vp, apple);
 
+    grid_viewport_node_t *node = grid_pop_viewport_1(gr);
+    CuAssertPtrEquals(tc, node->vp, carrot);
+    CuAssertPtrEquals(tc, gr->current_node->vp, apple);
+    CuAssertPtrEquals(tc, gr->current_node->child->vp, banana);
+    CuAssertPtrEquals(tc, gr->current_node->child->didi, NULL);
+    free(node);
+
+    int n = grid_down_viewport(gr, "durian");
+    CuAssertIntEquals(tc, -1, n);
+    CuAssertPtrEquals(tc, gr->current_node->vp, apple);
+
+    n = grid_down_viewport(gr, "banana");
+    CuAssertIntEquals(tc, 1, n);
+    CuAssertPtrEquals(tc, gr->current_node->vp, banana);
+
+    grid_push_viewport(gr, carrot);
+    n = grid_down_viewport(gr, "banana");
+    CuAssertIntEquals(tc, -1, n);
+    n = grid_seek_viewport(gr, "banana");
+    CuAssertIntEquals(tc, 2, n);
+    CuAssertPtrEquals(tc, gr->current_node->vp, banana);
+
     free_grid_context(gr);
 }
 
