@@ -246,6 +246,31 @@ new_grid_named_default_viewport(const char *name) {
 }
 
 /**
+ * Deallocate a \ref grid_viewport_t.
+ *
+ * \param vp A viewport.
+ * \param free_units If `true`, then free units referenced by the viewport.
+ */
+void
+free_grid_viewport(grid_viewport_t *vp, bool free_units) {
+    if (free_units) {
+        if (vp->x)
+            free_unit(vp->x, true);
+        if (vp->y)
+            free_unit(vp->y, true);
+        if (vp->width)
+            free_unit(vp->width, true);
+        if (vp->height)
+            free_unit(vp->height, true);
+        if (vp->angle)
+            free_unit(vp->angle, true);
+    }
+
+    free(vp->par);
+    free(vp);
+}
+
+/**
  * Allocate a new \ref grid_viewport_node_t.
  */
 static grid_viewport_node_t*
@@ -578,9 +603,30 @@ new_grid_context(int width_px, int height_px) {
 }
 
 /**
+ * Recursively deallocate a viewport tree and referenced viewports. The implementation
+ * assumes the top-level root node does not have any siblings.
+ */
+void
+free_grid_viewport_tree(grid_viewport_node_t *root) {
+    if (root->gege)
+        free_grid_viewport_tree(root->gege);
+
+    if (root->child)
+        free_grid_viewport_tree(root->child);
+
+    if (root->vp)
+        free_grid_viewport(root->vp, true);
+
+    free(root);
+}
+
+/**
  * Deallocate a \ref grid_context_t.
  */
 void
 free_grid_context(grid_context_t *gr) {
-    // TODO
+    free_grid_viewport_tree(gr->root_node);
+    cairo_destroy(gr->cr);
+    cairo_surface_destroy(gr->surface);
+    free(gr);
 }

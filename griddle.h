@@ -79,6 +79,9 @@ grid_viewport_t*
 new_grid_named_default_viewport(const char*);
 
 void
+free_grid_viewport(grid_viewport_t*, bool);
+
+void
 grid_push_viewport(grid_context_t*, grid_viewport_t*);
 
 grid_viewport_node_t*
@@ -103,6 +106,9 @@ grid_seek_viewport(grid_context_t*, const char*);
 
 grid_context_t*
 new_grid_context(int, int);
+
+void
+free_grid_viewport_tree(grid_viewport_node_t*);
 
 void
 free_grid_context(grid_context_t*);
