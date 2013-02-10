@@ -12,3 +12,6 @@ griddle_tests: $(OBJECTS) CuTest.o
 
 test: griddle_tests
 	./griddle_tests
+
+clean:
+	rm -rf $(OBJECTS) CuTest.o griddle_tests example hello.png
