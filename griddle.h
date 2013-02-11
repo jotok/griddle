@@ -25,6 +25,8 @@ typedef struct __unit_t {
 typedef struct {
     double red, green, blue, alpha;
     char lty[GridShortNameLength];
+    
+    unit_t *lwd;
 } grid_par_t;
 
 /**
@@ -81,12 +83,15 @@ unit_t*
 unit_div(unit_t*, double);
 
 void
-free_unit(unit_t*, bool);
+free_unit(unit_t*);
 
 // graphics parameters
 
 grid_par_t*
 new_grid_par(void);
+
+void
+free_grid_par(grid_par_t*);
 
 void
 grid_par_set_str(char*, const char*);
@@ -106,7 +111,7 @@ grid_viewport_t*
 new_grid_named_default_viewport(const char*);
 
 void
-free_grid_viewport(grid_viewport_t*, bool);
+free_grid_viewport(grid_viewport_t*);
 
 void
 grid_push_viewport(grid_context_t*, grid_viewport_t*);

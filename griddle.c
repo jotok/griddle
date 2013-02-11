@@ -98,13 +98,11 @@ unit_div(unit_t* u, double x) {
  *   referenced from this unit.
  */
 void
-free_unit(unit_t *u, bool free_recursive) {
-    if (free_recursive) {
-        if (u->arg1)
-            free_unit(u->arg1, true);
-        if (u->arg2)
-            free_unit(u->arg1, true);
-    }
+free_unit(unit_t *u) {
+    if (u->arg1)
+        free_unit(u->arg1);
+    if (u->arg2)
+        free_unit(u->arg1);
 
     free(u);
 }
@@ -219,7 +217,18 @@ new_grid_par(void) {
     memset(par->lty, '\0', GridShortNameLength);
     strncpy(par->lty, "solid", GridShortNameLength);
 
+    par->lwd = unit(2, "px");
+
     return par;
+}
+
+/**
+ * Deallocate a parameter struct.
+ */
+void
+free_grid_par(grid_par_t *par) {
+    free_unit(par->lwd);
+    free(par);
 }
 
 /**
@@ -313,19 +322,17 @@ new_grid_named_default_viewport(const char *name) {
  * \param free_units If `true`, then free units referenced by the viewport.
  */
 void
-free_grid_viewport(grid_viewport_t *vp, bool free_units) {
-    if (free_units) {
-        if (vp->x)
-            free_unit(vp->x, true);
-        if (vp->y)
-            free_unit(vp->y, true);
-        if (vp->width)
-            free_unit(vp->width, true);
-        if (vp->height)
-            free_unit(vp->height, true);
-        if (vp->angle)
-            free_unit(vp->angle, true);
-    }
+free_grid_viewport(grid_viewport_t *vp) {
+    if (vp->x)
+        free_unit(vp->x);
+    if (vp->y)
+        free_unit(vp->y);
+    if (vp->width)
+        free_unit(vp->width);
+    if (vp->height)
+        free_unit(vp->height);
+    if (vp->angle)
+        free_unit(vp->angle);
 
     free(vp->par);
     free(vp);
@@ -664,6 +671,8 @@ new_grid_context(int width_px, int height_px) {
     gr->root_node = new_grid_viewport_node(root);
     gr->current_node = gr->root_node;
 
+    gr->par = new_grid_par();
+
     return gr;
 }
 
@@ -680,7 +689,7 @@ free_grid_viewport_tree(grid_viewport_node_t *root) {
         free_grid_viewport_tree(root->child);
 
     if (root->vp)
-        free_grid_viewport(root->vp, true);
+        free_grid_viewport(root->vp);
 
     free(root);
 }
