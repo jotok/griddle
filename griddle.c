@@ -246,6 +246,36 @@ grid_par_set_str(char *dest, const char *source) {
     strncpy(dest, source, GridShortNameLength - 1);
 }
 
+/**
+ * A convenience function to set the RGB values for the given parameter struct.
+ */
+void
+grid_par_rgb(grid_par_t *par, double red, double green, double blue) {
+    par->red = red;
+    par->green = green;
+    par->blue = blue;
+}
+
+/**
+ * A convenience function to set the RGBA values for the given parameter struct.
+ */
+void
+grid_par_rgba(grid_par_t *par, double red, double green, double blue, double alpha) {
+    par->red = red;
+    par->green = green;
+    par->blue = blue;
+    par->alpha = alpha;
+}
+
+/**
+ * Merge the global parameters, the current viewport parameters, and the
+ * command-specific parameters. The merged parameters are written to
+ * `gr->par_merge`.
+ */
+static void
+grid_merge_parameters(grid_context_t *gr, grid_par_t *par) {
+}
+
 //
 // viewports
 //

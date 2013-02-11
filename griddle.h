@@ -23,9 +23,13 @@ typedef struct __unit_t {
  * Graphical parameters.
  */
 typedef struct {
-    double red, green, blue, alpha;
+    double red,    /**< Level of red component in RGB, between 0 and 1. */
+           green,  /**< Level of green component in RGB, between 0 and 1. */
+           blue,   /**< Level of blue component in RGB, between 0 and 1. */
+           alpha;  /**< Transparency level, between 0 and 1. 1 indicates
+                        full opacity and 0 indicates full transparency. */
+
     char lty[GridShortNameLength];
-    
     unit_t *lwd;
 } grid_par_t;
 
@@ -62,7 +66,7 @@ typedef struct {
     cairo_surface_t *surface;
     cairo_t *cr;
     grid_viewport_node_t *root_node, *current_node;
-    grid_par_t *par;
+    grid_par_t *par, *par_merge;
 } grid_context_t;
 
 // units
@@ -95,6 +99,12 @@ free_grid_par(grid_par_t*);
 
 void
 grid_par_set_str(char*, const char*);
+
+void
+grid_par_set_rgb(grid_par_t*, double, double, double);
+
+void
+grid_par_set_rgba(grid_par_t*, double, double, double);
 
 // viewports
 

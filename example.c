@@ -24,7 +24,7 @@ main(void) {
     grid_push_viewport(gr, vp);
 
     grid_par_t *par = new_grid_par();
-    par->green = 0;
+    par->green = 1;
     grid_line(gr, unit(0, "npc"), unit(1, "npc"), 
                   unit(0.5, "npc"), unit(0.5, "npc"), par);
 
