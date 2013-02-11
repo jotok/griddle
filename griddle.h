@@ -23,6 +23,7 @@ typedef struct __unit_t {
  * Graphical parameters.
  */
 typedef struct {
+    double red, green, blue, alpha;
     char lty[GridShortNameLength];
 } grid_par_t;
 
@@ -59,6 +60,7 @@ typedef struct {
     cairo_surface_t *surface;
     cairo_t *cr;
     grid_viewport_node_t *root_node, *current_node;
+    grid_par_t *par;
 } grid_context_t;
 
 // units
@@ -137,5 +139,8 @@ free_grid_viewport_tree(grid_viewport_node_t*);
 
 void
 free_grid_context(grid_context_t*);
+
+void
+grid_line(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
 
 #endif

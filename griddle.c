@@ -164,9 +164,9 @@ unit_to_npc_helper(double device_per_npc, double line_height_npc, unit_t *u) {
     } else if (strcmp(u->type, "npc") == 0) {
         return u->value;
     } else if (strcmp(u->type, "px") == 0) {
-        return device_per_npc * u->value;
+        return u->value / device_per_npc;
     } else if (strncmp(u->type, "line", 4) == 0) {
-        return line_height_npc * u->value;
+        return u->value * line_height_npc;
     } else {
         fprintf(stderr, "Warning: can't convert unit '%s' to radians\n", u->type);
         return 0.0;
@@ -212,6 +212,10 @@ unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
 grid_par_t*
 new_grid_par(void) {
     grid_par_t *par = malloc(sizeof(grid_par_t));
+
+    par->red = par->green = par->blue = 0.0;
+    par->alpha = 1.0;
+
     memset(par->lty, '\0', GridShortNameLength);
     strncpy(par->lty, "solid", GridShortNameLength);
 
@@ -656,8 +660,7 @@ new_grid_context(int width_px, int height_px) {
     // Scale so that user coordinates are NPC
     cairo_scale(gr->cr, width_px, height_px);
 
-    grid_viewport_t *root = new_grid_default_viewport();
-    strncpy(root->name, "root", GridLongNameLength - 1);
+    grid_viewport_t *root = new_grid_named_default_viewport("root");
     gr->root_node = new_grid_viewport_node(root);
     gr->current_node = gr->root_node;
 
@@ -691,4 +694,29 @@ free_grid_context(grid_context_t *gr) {
     cairo_destroy(gr->cr);
     cairo_surface_destroy(gr->surface);
     free(gr);
+}
+
+/**
+ * Draw a line connecting two points.
+ */
+void
+grid_line(grid_context_t* gr, unit_t *x1, unit_t *x2, unit_t *y1, unit_t *y2,
+          grid_par_t *par)
+{
+    if (par) {
+        cairo_set_source_rgba(gr->cr, par->red, par->green, par->blue, par->alpha);
+        cairo_set_line_width(gr->cr, unit_to_npc(gr->cr, 'x', unit(2, "px")));
+    } else {
+        // TODO fall back on viewport parameters
+    }
+
+    cairo_new_path(gr->cr);
+    cairo_move_to(gr->cr, unit_to_npc(gr->cr, 'x', x1),
+                          unit_to_npc(gr->cr, 'y', y1));
+    cairo_line_to(gr->cr, unit_to_npc(gr->cr, 'x', x2),
+                          unit_to_npc(gr->cr, 'y', y2));
+
+    printf("line width: %f\n", cairo_get_line_width(gr->cr));
+
+    cairo_stroke(gr->cr);
 }
