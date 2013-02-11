@@ -41,7 +41,14 @@ typedef struct {
  */
 typedef struct __grid_viewport_node_t {
     grid_viewport_t *vp;
-    struct __grid_viewport_node_t *parent, *gege, *didi, *child;
+    struct __grid_viewport_node_t *parent, 
+                                  *gege,   /**< Older sibling ('gege' is a 
+                                                romanization of the Chinese word 
+                                                for older brother). */
+                                  *didi,   /**< Younger sibling ('didi' is a
+                                                romanization of the Chinese word
+                                                for younger brother). */
+                                  *child;
 } grid_viewport_node_t;
 
 /**

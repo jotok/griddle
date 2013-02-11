@@ -112,9 +112,8 @@ free_unit(unit_t *u, bool free_recursive) {
 /**
  * Convert a \ref unit_t to a double representing the value of the unit in
  * radians. The types of all units in the tree should be one of "radian[s]",
- * "degree[s]", "+", or "-".
+ * "degree[s]", or a binary math operator.
  *
- * \param u A unit.
  * \return The value of the unit in radians.
  */
 static double
@@ -141,6 +140,64 @@ unit_to_radians(const unit_t *u) {
         fprintf(stderr, "Warning: can't convert unit '%s' to radians\n", u->type);
         return 0.0;
     }
+}
+
+/**
+ * NOTE: this function assumes device coordinates are pixels.
+ */
+static double
+unit_to_npc_helper(double device_per_npc, double line_height_npc, unit_t *u) {
+    if (strcmp(u->type, "+") == 0) {
+        double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
+        double y = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg2);
+        return x + y;
+    } else if (strcmp(u->type, "+") == 0) {
+        double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
+        double y = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg2);
+        return x - y;
+    } else if (strcmp(u->type, "*") == 0) {
+        double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
+        return x * u->value;
+    } else if (strcmp(u->type, "/") == 0) {
+        double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
+        return x / u->value;
+    } else if (strcmp(u->type, "npc") == 0) {
+        return u->value;
+    } else if (strcmp(u->type, "px") == 0) {
+        return device_per_npc * u->value;
+    } else if (strncmp(u->type, "line", 4) == 0) {
+        return line_height_npc * u->value;
+    } else {
+        fprintf(stderr, "Warning: can't convert unit '%s' to radians\n", u->type);
+        return 0.0;
+    }
+}
+
+/**
+ * Convert a unit to a single NPC value.
+ */
+static double
+unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
+    double device_x_per_npc = 1.0;
+    double device_y_per_npc = 1.0;
+    cairo_user_to_device_distance(cr, &device_x_per_npc, &device_y_per_npc);
+
+    cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
+    cairo_font_extents(cr, font_extents);
+    double line_height_npc = font_extents->height;
+
+    double result = 0.0;
+
+    if (dim == 'x') {
+        result = unit_to_npc_helper(device_x_per_npc, line_height_npc, u);
+    } else if (dim == 'y') {
+        result = unit_to_npc_helper(device_y_per_npc, line_height_npc, u);
+    } else {
+        fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
+    }
+
+    free(font_extents);
+    return result;
 }
 
 //
@@ -288,8 +345,12 @@ new_grid_viewport_node(grid_viewport_t *vp) {
 static void
 grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
     cairo_save(gr->cr);
+
+    cairo_translate(gr->cr, unit_to_npc(gr->cr, 'x', vp->x),
+                            unit_to_npc(gr->cr, 'y', vp->y));
+    cairo_scale(gr->cr, unit_to_npc(gr->cr, 'x', vp->width),
+                        unit_to_npc(gr->cr, 'y', vp->height));
     cairo_rotate(gr->cr, unit_to_radians(vp->angle));
-    // TODO scale and translate
 }
 
 /**
@@ -592,7 +653,7 @@ new_grid_context(int width_px, int height_px) {
     gr->surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width_px, height_px);
     gr->cr = cairo_create(gr->surface);
 
-    // put the user scale in npc
+    // Scale so that user coordinates are NPC
     cairo_scale(gr->cr, width_px, height_px);
 
     grid_viewport_t *root = new_grid_default_viewport();
@@ -604,8 +665,8 @@ new_grid_context(int width_px, int height_px) {
 }
 
 /**
- * Recursively deallocate a viewport tree and referenced viewports. The implementation
- * assumes the top-level root node does not have any siblings.
+ * Recursively deallocate a viewport tree and referenced viewports. The
+ * implementation assumes the top-level root node does not have any siblings.
  */
 void
 free_grid_viewport_tree(grid_viewport_node_t *root) {
