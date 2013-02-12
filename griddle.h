@@ -38,7 +38,7 @@ typedef struct {
  * buffer.
  */
 typedef struct {
-    unit_t *x, *y, *width, *height, *angle;
+    unit_t *x, *y, *width, *height;
     grid_par_t *par;
     char *name;
 } grid_viewport_t;
@@ -119,13 +119,13 @@ free_grid_par(grid_par_t*);
 // viewports
 
 grid_viewport_t*
-new_grid_viewport(unit_t*, unit_t*, unit_t*, unit_t*, unit_t*);
+new_grid_viewport(unit_t*, unit_t*, unit_t*, unit_t*);
 
 grid_viewport_t*
 new_grid_default_viewport(void);
 
 grid_viewport_t*
-new_grid_named_viewport(const char*, unit_t*, unit_t*, unit_t*, unit_t*, unit_t*);
+new_grid_named_viewport(const char*, unit_t*, unit_t*, unit_t*, unit_t*);
 
 grid_viewport_t*
 new_grid_named_default_viewport(const char*);

@@ -201,7 +201,8 @@ unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
 }
 
 /**
- * Convert a unit to a line width NPC value.
+ * Convert a unit to a line width NPC value. Currently, this function assumes
+ * that the underlying viewport is not rotated.
  */
 static double
 unit_to_line_width(cairo_t *cr, double x1, double x2, 
@@ -337,17 +338,15 @@ free_grid_par(grid_par_t *par) {
  * \param y The y coordinate of the center of the new viewport.
  * \param width The width of the new viewport.
  * \param height The height of the new viewport.
- * \param angle The angle of rotation of the new viewpor.
  * \return A pointer to the newly allocated \ref grid_viewport_t.
  */
 grid_viewport_t*
-new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height, unit_t *angle) {
+new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height) {
     grid_viewport_t *vp = malloc(sizeof(grid_viewport_t));
     vp->x = x;
     vp->y = y;
     vp->width = width;
     vp->height = height;
-    vp->angle = angle;
     vp->par = new_default_grid_par();
     vp->name = NULL;
 
@@ -374,9 +373,9 @@ new_grid_default_viewport() {
  */
 grid_viewport_t*
 new_grid_named_viewport(const char *name, unit_t *x, unit_t *y, 
-                        unit_t *width, unit_t *height, unit_t *angle) 
+                        unit_t *width, unit_t *height) 
 {
-    grid_viewport_t *vp = new_grid_viewport(x, y, width, height, angle);
+    grid_viewport_t *vp = new_grid_viewport(x, y, width, height);
     vp->name = malloc(strlen(name) + 1);
     strcpy(vp->name, name);
     return vp;
@@ -412,8 +411,6 @@ free_grid_viewport(grid_viewport_t *vp) {
         free_unit(vp->width);
     if (vp->height)
         free_unit(vp->height);
-    if (vp->angle)
-        free_unit(vp->angle);
 
     free(vp->par);
     free(vp);
@@ -442,7 +439,6 @@ grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
                             unit_to_npc(gr->cr, 'y', vp->y));
     cairo_scale(gr->cr, unit_to_npc(gr->cr, 'x', vp->width),
                         unit_to_npc(gr->cr, 'y', vp->height));
-    cairo_rotate(gr->cr, unit_to_radians(vp->angle));
 }
 
 /**
