@@ -118,7 +118,7 @@ unit_to_npc_helper(double device_per_npc, double line_height_npc, unit_t *u) {
         double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
         double y = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg2);
         return x + y;
-    } else if (strcmp(u->type, "+") == 0) {
+    } else if (strcmp(u->type, "-") == 0) {
         double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
         double y = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg2);
         return x - y;
@@ -135,7 +135,7 @@ unit_to_npc_helper(double device_per_npc, double line_height_npc, unit_t *u) {
     } else if (strncmp(u->type, "line", 4) == 0) {
         return u->value * line_height_npc;
     } else {
-        fprintf(stderr, "Warning: can't convert unit '%s' to radians\n", u->type);
+        fprintf(stderr, "Warning: can't convert unit '%s' to npc\n", u->type);
         return 0.0;
     }
 }
@@ -247,6 +247,8 @@ new_grid_par(grid_par_t par) {
     if (par.fill)
         this_par->fill = rgba(par.fill->red, par.fill->green,
                               par.fill->blue, par.fill->alpha);
+    else
+        this_par->fill = NULL;
 
     if (par.lty) {
         this_par->lty = malloc(strlen(par.lty) + 1);
@@ -259,6 +261,11 @@ new_grid_par(grid_par_t par) {
         this_par->lwd = unit(par.lwd->value, par.lwd->type);
     else 
         this_par->lwd = NULL;
+
+    if (par.font_size)
+        this_par->font_size = unit(par.font_size->value, par.font_size->type);
+    else
+        this_par->font_size = NULL;
 
     return this_par;
 }
@@ -278,6 +285,7 @@ new_grid_default_par(void) {
     strcpy(par->lty, lty);
 
     par->lwd = unit(2, "px");
+    par->font_size = unit(20, "px");
 
     return par;
 }
@@ -792,7 +800,7 @@ grid_line(grid_context_t* gr, unit_t *x1, unit_t *y1, unit_t *x2, unit_t *y2,
     cairo_line_to(cr, x2_npc, 1 - y2_npc);
 
     grid_apply_line_parameters(cr, x1_npc, y1_npc, x2_npc, y2_npc, par, gr->par);
-    cairo_stroke(gr->cr);
+    cairo_stroke(cr);
 }
 
 void
@@ -817,5 +825,30 @@ grid_rect(grid_context_t *gr, unit_t *x, unit_t *y,
 
     grid_apply_line_parameters(cr, x_npc, x_npc + width_npc,
                                y_npc, y_npc, par, gr->par);
-    cairo_stroke(gr->cr);
+    cairo_stroke(cr);
+}
+
+void
+grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
+          grid_par_t *par) 
+{
+    rgba_t *color;
+    if (par && par->color)
+        color = par->color;
+    else
+        color = gr->par->color;
+
+    unit_t *font_size;
+    if (par && par->font_size)
+        font_size = par->font_size;
+    else
+        font_size = gr->par->font_size;
+
+    cairo_t *cr = gr->cr;
+    cairo_new_path(cr);
+    cairo_move_to(cr, unit_to_npc(cr, 'x', x), 1 - unit_to_npc(cr, 'y', y));
+    cairo_set_source_rgba(cr, color->red, color->blue, 
+                          color->green, color->alpha);
+    cairo_set_font_size(cr, unit_to_npc(cr, 'x', font_size));
+    cairo_show_text(cr, text);
 }

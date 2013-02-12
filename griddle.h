@@ -30,7 +30,7 @@ typedef struct {
 typedef struct {
     rgba_t *color, *fill;
     char *lty;
-    unit_t *lwd;
+    unit_t *lwd, *font_size;
 } grid_par_t;
 
 /**
@@ -172,5 +172,8 @@ grid_line(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
 
 void
 grid_rect(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
+
+void
+grid_text(grid_context_t*, const char*, unit_t*, unit_t*, grid_par_t*);
 
 #endif
