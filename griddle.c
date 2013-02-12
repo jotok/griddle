@@ -436,9 +436,9 @@ grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
     cairo_save(gr->cr);
 
     cairo_translate(gr->cr, unit_to_npc(gr->cr, 'x', vp->x),
-                            unit_to_npc(gr->cr, 'y', vp->y));
+                            1 - unit_to_npc(gr->cr, 'y', vp->y));
     cairo_scale(gr->cr, unit_to_npc(gr->cr, 'x', vp->width),
-                        unit_to_npc(gr->cr, 'y', vp->height));
+                        1 - unit_to_npc(gr->cr, 'y', vp->height));
 }
 
 /**
