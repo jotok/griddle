@@ -4,9 +4,6 @@
 #include <stdbool.h>
 #include <cairo.h>
 
-#define GridLongNameLength 30
-#define GridShortNameLength 10
-
 // types
 
 /**
