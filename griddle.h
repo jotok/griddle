@@ -32,7 +32,7 @@ typedef struct {
  */
 typedef struct {
     rgba_t *color;
-    char lty[GridShortNameLength];
+    char *lty;
     unit_t *lwd;
 } grid_par_t;
 

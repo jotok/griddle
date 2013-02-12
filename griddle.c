@@ -246,8 +246,12 @@ new_grid_par(grid_par_t par) {
     else 
         this_par->color = NULL;
 
-    memset(this_par->lty, '\0', GridShortNameLength);
-    strncpy(this_par->lty, par.lty, GridShortNameLength);
+    if (par.lty) {
+        this_par->lty = malloc(strlen(par.lty) + 1);
+        strcpy(this_par->lty, par.lty);
+    } else {
+        this_par->lty = NULL;
+    }
 
     if (par.lwd)
         this_par->lwd = unit(par.lwd->value, par.lwd->type);
@@ -266,8 +270,9 @@ new_default_grid_par(void) {
 
     par->color = rgba(0, 0, 0, 1);
 
-    memset(par->lty, '\0', GridShortNameLength);
-    strncpy(par->lty, "solid", GridShortNameLength);
+    char *lty = "solid";
+    par->lty = malloc(strlen(lty) + 1);
+    strcpy(par->lty, lty);
 
     par->lwd = unit(2, "px");
 
@@ -282,7 +287,12 @@ free_grid_par(grid_par_t *par) {
     if (par->color)
         free(par->color);
 
-    free_unit(par->lwd);
+    if (par->lty)
+        free(par->lty);
+
+    if (par->lwd)
+        free(par->lwd);
+
     free(par);
 }
 
