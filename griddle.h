@@ -40,7 +40,7 @@ typedef struct {
 typedef struct {
     unit_t *x, *y, *width, *height, *angle;
     grid_par_t *par;
-    char name[GridLongNameLength];
+    char *name;
 } grid_viewport_t;
 
 /**
@@ -115,9 +115,6 @@ new_default_grid_par(void);
 
 void
 free_grid_par(grid_par_t*);
-
-void
-grid_par_set_str(char*, const char*);
 
 // viewports
 

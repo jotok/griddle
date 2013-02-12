@@ -296,21 +296,6 @@ free_grid_par(grid_par_t *par) {
     free(par);
 }
 
-/**
- * Safely set the value of a string parameter from a null-terminated string.
- * All parameter `char *` fields have length \ref GridShortNameLength.  This
- * function ensures that you don't write past the end of the field. If `source`
- * is too long, it's simply cut off, and `dest` retains a terminating null
- * character.
- *
- * \param dest Destination string.
- * \param source Source string.
- */
-void
-grid_par_set_str(char *dest, const char *source) {
-    strncpy(dest, source, GridShortNameLength - 1);
-}
-
 //
 // viewports
 //
@@ -334,8 +319,7 @@ new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height, unit_t *a
     vp->height = height;
     vp->angle = angle;
     vp->par = new_default_grid_par();
-
-    memset(vp->name, '\0', GridLongNameLength);
+    vp->name = NULL;
 
     return vp;
 }
@@ -363,7 +347,8 @@ new_grid_named_viewport(const char *name, unit_t *x, unit_t *y,
                         unit_t *width, unit_t *height, unit_t *angle) 
 {
     grid_viewport_t *vp = new_grid_viewport(x, y, width, height, angle);
-    strncpy(vp->name, name, GridLongNameLength - 1);
+    vp->name = malloc(strlen(name) + 1);
+    strcpy(vp->name, name);
     return vp;
 }
 
@@ -376,7 +361,8 @@ new_grid_named_viewport(const char *name, unit_t *x, unit_t *y,
 grid_viewport_t*
 new_grid_named_default_viewport(const char *name) {
     grid_viewport_t *vp = new_grid_default_viewport();
-    strncpy(vp->name, name, GridLongNameLength - 1);
+    vp->name = malloc(strlen(name) + 1);
+    strcpy(vp->name, name);
     return vp;
 }
 
@@ -618,7 +604,7 @@ static grid_viewport_node_t*
 grid_viewport_dfs(grid_viewport_node_t *this, const char *name, 
                   int *plevel, grid_viewport_list_t *path) 
 {
-    if (strncmp(this->vp->name, name, GridLongNameLength) == 0) {
+    if (this->vp->name && strcmp(this->vp->name, name) == 0) {
         grid_viewport_list_append(path, this->vp);
         return this;
     }
