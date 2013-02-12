@@ -28,8 +28,8 @@ unit_t*
 unit(double value, const char *type) {
     unit_t *u = malloc(sizeof(unit_t));
     u->value = value;
-    strncpy(u->type, type, GridShortNameLength - 1);
-    u->type[GridShortNameLength - 1] = '\0';
+    u->type = malloc(strlen(type) + 1);
+    strcpy(u->type, type);
 
     return u;
 }
@@ -99,6 +99,8 @@ unit_div(unit_t* u, double x) {
  */
 void
 free_unit(unit_t *u) {
+    if (u->type)
+        free(u->type);
     if (u->arg1)
         free_unit(u->arg1);
     if (u->arg2)
@@ -203,16 +205,66 @@ unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
 //
 
 /**
- * Allocate a new parameter struct and set default values.
- *
- * \returns A pointer to the newly allocated \ref grid_par_t.
+ * Allocate an \ref rgba_t with the given red, green, and blue parameters.
+ * `alpha` is set to 1 (opacity).
+ */
+rgba_t*
+rgb(double red, double green, double blue) {
+    rgba_t *color = malloc(sizeof(rgba_t));
+    color->red = red;
+    color->green = green;
+    color->blue = blue;
+    color->alpha = 1;
+
+    return color;
+}
+
+/**
+ * Allocate an \ref rgba_t with the given red, green, blue, and alpha parameters.
+ */
+rgba_t*
+rgba(double red, double green, double blue, double alpha) {
+    rgba_t *color = malloc(sizeof(rgba_t));
+    color->red = red;
+    color->green = green;
+    color->blue = blue;
+    color->alpha = alpha;
+
+    return color;
+}
+
+/**
+ * Allocate a new parameter struct by copying values from the argument struct.
  */
 grid_par_t*
-new_grid_par(void) {
+new_grid_par(grid_par_t par) {
+    grid_par_t *this_par = malloc(sizeof(grid_par_t));
+
+    if (par.color)
+        this_par->color = rgba(par.color->red, par.color->green, 
+                               par.color->blue, par.color->alpha);
+    else 
+        this_par->color = NULL;
+
+    memset(this_par->lty, '\0', GridShortNameLength);
+    strncpy(this_par->lty, par.lty, GridShortNameLength);
+
+    if (par.lwd)
+        this_par->lwd = unit(par.lwd->value, par.lwd->type);
+    else 
+        this_par->lwd = NULL;
+
+    return this_par;
+}
+
+/**
+ * Allocate a new parameter struct with parameters set to default values.
+ */
+grid_par_t*
+new_default_grid_par(void) {
     grid_par_t *par = malloc(sizeof(grid_par_t));
 
-    par->red = par->green = par->blue = 0.0;
-    par->alpha = 1.0;
+    par->color = rgba(0, 0, 0, 1);
 
     memset(par->lty, '\0', GridShortNameLength);
     strncpy(par->lty, "solid", GridShortNameLength);
@@ -227,6 +279,9 @@ new_grid_par(void) {
  */
 void
 free_grid_par(grid_par_t *par) {
+    if (par->color)
+        free(par->color);
+
     free_unit(par->lwd);
     free(par);
 }
@@ -244,36 +299,6 @@ free_grid_par(grid_par_t *par) {
 void
 grid_par_set_str(char *dest, const char *source) {
     strncpy(dest, source, GridShortNameLength - 1);
-}
-
-/**
- * A convenience function to set the RGB values for the given parameter struct.
- */
-void
-grid_par_rgb(grid_par_t *par, double red, double green, double blue) {
-    par->red = red;
-    par->green = green;
-    par->blue = blue;
-}
-
-/**
- * A convenience function to set the RGBA values for the given parameter struct.
- */
-void
-grid_par_rgba(grid_par_t *par, double red, double green, double blue, double alpha) {
-    par->red = red;
-    par->green = green;
-    par->blue = blue;
-    par->alpha = alpha;
-}
-
-/**
- * Merge the global parameters, the current viewport parameters, and the
- * command-specific parameters. The merged parameters are written to
- * `gr->par_merge`.
- */
-static void
-grid_merge_parameters(grid_context_t *gr, grid_par_t *par) {
 }
 
 //
@@ -298,7 +323,7 @@ new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height, unit_t *a
     vp->width = width;
     vp->height = height;
     vp->angle = angle;
-    vp->par = new_grid_par();
+    vp->par = new_default_grid_par();
 
     memset(vp->name, '\0', GridLongNameLength);
 
@@ -701,7 +726,7 @@ new_grid_context(int width_px, int height_px) {
     gr->root_node = new_grid_viewport_node(root);
     gr->current_node = gr->root_node;
 
-    gr->par = new_grid_par();
+    gr->par = new_default_grid_par();
 
     return gr;
 }
@@ -742,20 +767,29 @@ void
 grid_line(grid_context_t* gr, unit_t *x1, unit_t *x2, unit_t *y1, unit_t *y2,
           grid_par_t *par)
 {
+    rgba_t *color;
+    unit_t *lwd;
+    
     if (par) {
-        cairo_set_source_rgba(gr->cr, par->red, par->green, par->blue, par->alpha);
-        cairo_set_line_width(gr->cr, unit_to_npc(gr->cr, 'x', unit(2, "px")));
-    } else {
-        // TODO fall back on viewport parameters
+        color = par->color;
+        lwd = par->lwd;
     }
+
+    if (!par->color)
+        color = gr->par->color;
+
+    if (!par->lwd)
+        lwd = gr->par->lwd;
+
+    cairo_set_source_rgba(gr->cr, color->red, color->green, 
+                          color->blue, color->alpha);
+    cairo_set_line_width(gr->cr, unit_to_npc(gr->cr, 'x', lwd));
 
     cairo_new_path(gr->cr);
     cairo_move_to(gr->cr, unit_to_npc(gr->cr, 'x', x1),
-                          unit_to_npc(gr->cr, 'y', y1));
+                          1 - unit_to_npc(gr->cr, 'y', y1));
     cairo_line_to(gr->cr, unit_to_npc(gr->cr, 'x', x2),
-                          unit_to_npc(gr->cr, 'y', y2));
-
-    printf("line width: %f\n", cairo_get_line_width(gr->cr));
+                          1 - unit_to_npc(gr->cr, 'y', y2));
 
     cairo_stroke(gr->cr);
 }

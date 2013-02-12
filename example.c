@@ -23,10 +23,11 @@ main(void) {
                                             unit(0, "radian"));
     grid_push_viewport(gr, vp);
 
-    grid_par_t *par = new_grid_par();
-    par->green = 1;
+    rgba_t *green = rgb(0, 1, 0);
+    grid_par_t *par = new_grid_par((grid_par_t){.color = green});
+
     grid_line(gr, unit(0, "npc"), unit(1, "npc"), 
-                  unit(0.5, "npc"), unit(0.5, "npc"), par);
+                  unit(0, "npc"), unit(1, "npc"), par);
 
     cairo_surface_write_to_png(gr->surface, "griddle.png");
 }
