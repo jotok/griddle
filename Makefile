@@ -10,6 +10,8 @@ $(P): $(OBJECTS)
 
 griddle_tests: $(OBJECTS) CuTest.o
 
+color_test: $(OBJECTS)
+
 test: griddle_tests
 	./griddle_tests
 

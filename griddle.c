@@ -770,12 +770,12 @@ grid_rect(grid_context_t *gr, unit_t *x, unit_t *y,
 {
     cairo_t *cr = gr->cr;
     double x_npc = unit_to_npc(cr, 'x', x);
-    double y_npc = 1 - unit_to_npc(cr, 'y', y);
+    double y_npc = unit_to_npc(cr, 'y', y);
     double width_npc = unit_to_npc(cr, 'x', width);
     double height_npc = unit_to_npc(cr, 'y', height);
 
     cairo_new_path(cr);
-    cairo_rectangle(cr, x_npc, 1 - y_npc, width_npc, height_npc);
+    cairo_rectangle(cr, x_npc, 1 - y_npc - height_npc, width_npc, height_npc);
 
     rgba_t *fill;
     if ((par && (fill = par->fill)) || (fill = gr->par->fill)) {

@@ -1,4 +1,5 @@
 #include "griddle.h"
+#include "griddle_colors.h"
 
 #include <stdio.h>
 
@@ -20,10 +21,8 @@ main(void) {
                              unit(0.5, "npc"), unit(0.5, "npc"));
 
     grid_push_viewport(gr, vp1);
-    rgba_t *gray = rgb(0.6, 0.6, 0.6);
-    rgba_t *white = rgb(1, 1, 1);
-    unit_t *font_size = unit(18, "px");
-    par = (grid_par_t){.color = gray, .fill = white, .font_size = font_size};
+    unit_t font_size = Unit(18, "px");
+    par = (grid_par_t){.color = &gray6, .fill = &white, .font_size = &font_size};
     grid_rect(gr, unit(0, "npc"), unit(0, "npc"), 
                   unit(1, "npc"), unit(1, "npc"), &par);
     par.color = NULL;
@@ -32,7 +31,7 @@ main(void) {
 
     grid_up_viewport_1(gr);
     grid_push_viewport(gr, vp2);
-    par.color = gray;
+    par.color = &gray6;
     grid_rect(gr, unit(0, "npc"), unit(0, "npc"), 
                   unit(1, "npc"), unit(1, "npc"), &par);
     par.color = NULL;
