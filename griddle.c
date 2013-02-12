@@ -200,6 +200,36 @@ unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
     return result;
 }
 
+/**
+ * Convert a unit to a line width NPC value.
+ */
+static double
+unit_to_line_width(cairo_t *cr, double x1, double x2, 
+                   double y1, double y2, unit_t *u) 
+{
+    double device_x_per_npc = 1.0;
+    double device_y_per_npc = 1.0;
+    cairo_user_to_device_distance(cr, &device_x_per_npc, &device_y_per_npc);
+
+    double device_per_npc;
+    if (x1 == x2)
+        device_per_npc = device_x_per_npc;
+    else if (y1 == y2)
+        device_per_npc = device_y_per_npc;
+    else {
+        double angle = atan((y2 - y1) / (x2 - x1));
+        device_y_per_npc = cos(angle) * device_x_per_npc +
+                           (1 - cos(angle)) * device_y_per_npc;
+    }
+
+    cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
+    cairo_font_extents(cr, font_extents);
+    double line_height_npc = font_extents->height;
+    free(font_extents);
+
+    return unit_to_npc_helper(device_per_npc, line_height_npc, u);
+}
+
 //
 // graphics parameters
 //
