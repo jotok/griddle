@@ -19,8 +19,8 @@ main(void) {
     rgba_t *green = rgb(0, 1, 0);
     par = new_grid_par((grid_par_t){.color = green});
 
-    grid_line(gr, unit(0, "npc"), unit(1, "npc"), 
-                  unit(0, "npc"), unit(1, "npc"), par);
+    grid_line(gr, unit(0, "npc"), unit(0, "npc"), 
+                  unit(1, "npc"), unit(1, "npc"), par);
 
     cairo_surface_write_to_png(gr->surface, "griddle.png");
 }

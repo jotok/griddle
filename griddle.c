@@ -172,8 +172,8 @@ unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
  * that the underlying viewport is not rotated.
  */
 static double
-unit_to_line_width(cairo_t *cr, double x1, double x2, 
-                   double y1, double y2, unit_t *u) 
+unit_to_line_width(cairo_t *cr, double x1, double y1, 
+                   double x2, double y2, unit_t *u) 
 {
     double device_x_per_npc = 1.0;
     double device_y_per_npc = 1.0;
@@ -757,7 +757,7 @@ free_grid_context(grid_context_t *gr) {
  * Apply the graphical parameters, fall back to defaults where applicable.
  */
 static void
-grid_apply_line_parameters(cairo_t *cr, double x1, double x2, double y1, double y2,
+grid_apply_line_parameters(cairo_t *cr, double x1, double y1, double x2, double y2,
                            grid_par_t *par, grid_par_t *default_par) 
 {
     rgba_t *color;
@@ -771,27 +771,27 @@ grid_apply_line_parameters(cairo_t *cr, double x1, double x2, double y1, double 
 
     cairo_set_source_rgba(cr, color->red, color->green, 
                           color->blue, color->alpha);
-    cairo_set_line_width(cr, unit_to_line_width(cr, x1, x2, y1, y2, lwd));
+    cairo_set_line_width(cr, unit_to_line_width(cr, x1, y1, x2, y2, lwd));
 }
 
 /**
  * Draw a line connecting two points.
  */
 void
-grid_line(grid_context_t* gr, unit_t *x1, unit_t *x2, unit_t *y1, unit_t *y2,
+grid_line(grid_context_t* gr, unit_t *x1, unit_t *y1, unit_t *x2, unit_t *y2,
           grid_par_t *par)
 {
     cairo_t *cr = gr->cr;
     double x1_npc = unit_to_npc(cr, 'x', x1);
-    double x2_npc = unit_to_npc(cr, 'x', x2);
     double y1_npc = unit_to_npc(cr, 'y', y1);
+    double x2_npc = unit_to_npc(cr, 'x', x2);
     double y2_npc = unit_to_npc(cr, 'y', y2);
 
     cairo_new_path(cr);
     cairo_move_to(cr, x1_npc, 1 - y1_npc);
     cairo_line_to(cr, x2_npc, 1 - y2_npc);
 
-    grid_apply_line_parameters(cr, x1_npc, x2_npc, y1_npc, y2_npc, par, gr->par);
+    grid_apply_line_parameters(cr, x1_npc, y1_npc, x2_npc, y2_npc, par, gr->par);
     cairo_stroke(gr->cr);
 }
 
