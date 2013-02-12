@@ -110,39 +110,6 @@ free_unit(unit_t *u) {
 }
 
 /**
- * Convert a \ref unit_t to a double representing the value of the unit in
- * radians. The types of all units in the tree should be one of "radian[s]",
- * "degree[s]", or a binary math operator.
- *
- * \return The value of the unit in radians.
- */
-static double
-unit_to_radians(const unit_t *u) {
-    if (strcmp(u->type, "+") == 0) {
-        double x = unit_to_radians(u->arg1);
-        double y = unit_to_radians(u->arg2);
-        return x + y;
-    } else if (strcmp(u->type, "+") == 0) {
-        double x = unit_to_radians(u->arg1);
-        double y = unit_to_radians(u->arg2);
-        return x - y;
-    } else if (strcmp(u->type, "*") == 0) {
-        double x = unit_to_radians(u->arg1);
-        return x * u->value;
-    } else if (strcmp(u->type, "/") == 0) {
-        double x = unit_to_radians(u->arg1);
-        return x / u->value;
-    } else if (strncmp(u->type, "radian", 6) == 0) {
-        return u->value;
-    } else if (strncmp(u->type, "degree", 6) == 0) {
-        return u->value * 2 * Pi / 360.0;
-    } else {
-        fprintf(stderr, "Warning: can't convert unit '%s' to radians\n", u->type);
-        return 0.0;
-    }
-}
-
-/**
  * NOTE: this function assumes device coordinates are pixels.
  */
 static double
@@ -219,8 +186,8 @@ unit_to_line_width(cairo_t *cr, double x1, double x2,
         device_per_npc = device_y_per_npc;
     else {
         double angle = atan((y2 - y1) / (x2 - x1));
-        device_y_per_npc = cos(angle) * device_x_per_npc +
-                           (1 - cos(angle)) * device_y_per_npc;
+        device_per_npc = cos(angle) * device_x_per_npc +
+                         (1 - cos(angle)) * device_y_per_npc;
     }
 
     cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
@@ -277,6 +244,10 @@ new_grid_par(grid_par_t par) {
     else 
         this_par->color = NULL;
 
+    if (par.fill)
+        this_par->fill = rgba(par.fill->red, par.fill->green,
+                              par.fill->blue, par.fill->alpha);
+
     if (par.lty) {
         this_par->lty = malloc(strlen(par.lty) + 1);
         strcpy(this_par->lty, par.lty);
@@ -296,10 +267,11 @@ new_grid_par(grid_par_t par) {
  * Allocate a new parameter struct with parameters set to default values.
  */
 grid_par_t*
-new_default_grid_par(void) {
+new_grid_default_par(void) {
     grid_par_t *par = malloc(sizeof(grid_par_t));
 
     par->color = rgba(0, 0, 0, 1);
+    par->fill = NULL;
 
     char *lty = "solid";
     par->lty = malloc(strlen(lty) + 1);
@@ -347,7 +319,6 @@ new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height) {
     vp->y = y;
     vp->width = width;
     vp->height = height;
-    vp->par = new_default_grid_par();
     vp->name = NULL;
 
     return vp;
@@ -748,7 +719,7 @@ new_grid_context(int width_px, int height_px) {
     gr->root_node = new_grid_viewport_node(root);
     gr->current_node = gr->root_node;
 
-    gr->par = new_default_grid_par();
+    gr->par = new_grid_default_par();
 
     return gr;
 }
@@ -786,24 +757,21 @@ free_grid_context(grid_context_t *gr) {
  * Apply the graphical parameters, fall back to defaults where applicable.
  */
 static void
-grid_apply_line_parameters(cairo_t *cr, grid_par_t *par, grid_par_t *default_par) {
+grid_apply_line_parameters(cairo_t *cr, double x1, double x2, double y1, double y2,
+                           grid_par_t *par, grid_par_t *default_par) 
+{
     rgba_t *color;
     unit_t *lwd;
-    
-    if (par) {
-        color = par->color;
-        lwd = par->lwd;
-    }
 
-    if (!par->color)
+    if (!(par && (color = par->color)))
         color = default_par->color;
 
-    if (!par->lwd)
+    if (!(par && (lwd = par->lwd)))
         lwd = default_par->lwd;
 
     cairo_set_source_rgba(cr, color->red, color->green, 
                           color->blue, color->alpha);
-    cairo_set_line_width(cr, unit_to_npc(cr, 'x', lwd));
+    cairo_set_line_width(cr, unit_to_line_width(cr, x1, x2, y1, y2, lwd));
 }
 
 /**
@@ -813,14 +781,17 @@ void
 grid_line(grid_context_t* gr, unit_t *x1, unit_t *x2, unit_t *y1, unit_t *y2,
           grid_par_t *par)
 {
-    grid_apply_line_parameters(gr->cr, par, gr->par);
+    cairo_t *cr = gr->cr;
+    double x1_npc = unit_to_npc(cr, 'x', x1);
+    double x2_npc = unit_to_npc(cr, 'x', x2);
+    double y1_npc = unit_to_npc(cr, 'y', y1);
+    double y2_npc = unit_to_npc(cr, 'y', y2);
 
-    cairo_new_path(gr->cr);
-    cairo_move_to(gr->cr, unit_to_npc(gr->cr, 'x', x1),
-                          1 - unit_to_npc(gr->cr, 'y', y1));
-    cairo_line_to(gr->cr, unit_to_npc(gr->cr, 'x', x2),
-                          1 - unit_to_npc(gr->cr, 'y', y2));
+    cairo_new_path(cr);
+    cairo_move_to(cr, x1_npc, 1 - y1_npc);
+    cairo_line_to(cr, x2_npc, 1 - y2_npc);
 
+    grid_apply_line_parameters(cr, x1_npc, x2_npc, y1_npc, y2_npc, par, gr->par);
     cairo_stroke(gr->cr);
 }
 
@@ -828,4 +799,23 @@ void
 grid_rect(grid_context_t *gr, unit_t *x, unit_t *y, 
           unit_t *width, unit_t *height, grid_par_t *par) 
 {
+    cairo_t *cr = gr->cr;
+    double x_npc = unit_to_npc(cr, 'x', x);
+    double y_npc = 1 - unit_to_npc(cr, 'y', y);
+    double width_npc = unit_to_npc(cr, 'x', width);
+    double height_npc = unit_to_npc(cr, 'y', height);
+
+    cairo_new_path(cr);
+    cairo_rectangle(cr, x_npc, 1 - y_npc, width_npc, height_npc);
+
+    rgba_t *fill;
+    if ((par && (fill = par->fill)) || (fill = gr->par->fill)) {
+        cairo_set_source_rgba(cr, fill->red, fill->green,
+                              fill->blue, fill->alpha);
+        cairo_fill_preserve(cr);
+    }
+
+    grid_apply_line_parameters(cr, x_npc, x_npc + width_npc,
+                               y_npc, y_npc, par, gr->par);
+    cairo_stroke(gr->cr);
 }

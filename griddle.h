@@ -96,7 +96,7 @@ free_unit(unit_t*);
 /**
  * Construct an rgba_t literal with the given values and alpha = 1.
  */
-#define RGB(R,G,B) ((rgba_t){.red = R, .green = G, .blue = B})
+#define RGB(R,G,B) ((rgba_t){.red = R, .green = G, .blue = B, .alpha = 1})
 
 /**
  * Construct an rgba_t literal with the given values.
@@ -113,7 +113,7 @@ grid_par_t*
 new_grid_par(grid_par_t par);
 
 grid_par_t*
-new_default_grid_par(void);
+new_grid_default_par(void);
 
 void
 free_grid_par(grid_par_t*);
