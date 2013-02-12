@@ -28,7 +28,7 @@ typedef struct {
  * Graphical parameters.
  */
 typedef struct {
-    rgba_t *color;
+    rgba_t *color, *fill;
     char *lty;
     unit_t *lwd;
 } grid_par_t;
@@ -71,6 +71,8 @@ typedef struct {
 
 // units
 
+#define Unit(X,T) ((unit_t){.value = X, .type = T})
+
 unit_t*
 unit(double, const char*);
 
@@ -94,7 +96,7 @@ free_unit(unit_t*);
 /**
  * Construct an rgba_t literal with the given values and alpha = 1.
  */
-#define RGB(R,G,B) ((rgba_t){ .red = R, .green = G, .blue = B })
+#define RGB(R,G,B) ((rgba_t){.red = R, .green = G, .blue = B})
 
 /**
  * Construct an rgba_t literal with the given values.
@@ -167,5 +169,8 @@ free_grid_context(grid_context_t*);
 
 void
 grid_line(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
+
+void
+grid_rect(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
 
 #endif

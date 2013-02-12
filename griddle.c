@@ -362,7 +362,7 @@ new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height) {
 grid_viewport_t*
 new_grid_default_viewport() {
     return new_grid_viewport(unit(0, "npc"), unit(0, "npc"), 
-                             unit(1, "npc"), unit(1, "npc"), unit(0, "radians"));
+                             unit(1, "npc"), unit(1, "npc"));
 }
 
 /**
@@ -436,9 +436,9 @@ grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
     cairo_save(gr->cr);
 
     cairo_translate(gr->cr, unit_to_npc(gr->cr, 'x', vp->x),
-                            1 - unit_to_npc(gr->cr, 'y', vp->y));
+                            unit_to_npc(gr->cr, 'y', vp->y));
     cairo_scale(gr->cr, unit_to_npc(gr->cr, 'x', vp->width),
-                        1 - unit_to_npc(gr->cr, 'y', vp->height));
+                        unit_to_npc(gr->cr, 'y', vp->height));
 }
 
 /**
@@ -783,12 +783,10 @@ free_grid_context(grid_context_t *gr) {
 }
 
 /**
- * Draw a line connecting two points.
+ * Apply the graphical parameters, fall back to defaults where applicable.
  */
-void
-grid_line(grid_context_t* gr, unit_t *x1, unit_t *x2, unit_t *y1, unit_t *y2,
-          grid_par_t *par)
-{
+static void
+grid_apply_line_parameters(cairo_t *cr, grid_par_t *par, grid_par_t *default_par) {
     rgba_t *color;
     unit_t *lwd;
     
@@ -798,14 +796,24 @@ grid_line(grid_context_t* gr, unit_t *x1, unit_t *x2, unit_t *y1, unit_t *y2,
     }
 
     if (!par->color)
-        color = gr->par->color;
+        color = default_par->color;
 
     if (!par->lwd)
-        lwd = gr->par->lwd;
+        lwd = default_par->lwd;
 
-    cairo_set_source_rgba(gr->cr, color->red, color->green, 
+    cairo_set_source_rgba(cr, color->red, color->green, 
                           color->blue, color->alpha);
-    cairo_set_line_width(gr->cr, unit_to_npc(gr->cr, 'x', lwd));
+    cairo_set_line_width(cr, unit_to_npc(cr, 'x', lwd));
+}
+
+/**
+ * Draw a line connecting two points.
+ */
+void
+grid_line(grid_context_t* gr, unit_t *x1, unit_t *x2, unit_t *y1, unit_t *y2,
+          grid_par_t *par)
+{
+    grid_apply_line_parameters(gr->cr, par, gr->par);
 
     cairo_new_path(gr->cr);
     cairo_move_to(gr->cr, unit_to_npc(gr->cr, 'x', x1),
@@ -814,4 +822,10 @@ grid_line(grid_context_t* gr, unit_t *x1, unit_t *x2, unit_t *y1, unit_t *y2,
                           1 - unit_to_npc(gr->cr, 'y', y2));
 
     cairo_stroke(gr->cr);
+}
+
+void
+grid_rect(grid_context_t *gr, unit_t *x, unit_t *y, 
+          unit_t *width, unit_t *height, grid_par_t *par) 
+{
 }

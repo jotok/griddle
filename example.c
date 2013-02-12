@@ -19,8 +19,7 @@ main(void) {
 
     grid_context_t *gr = new_grid_context(800, 800);
     grid_viewport_t *vp = new_grid_viewport(unit(0.25, "npc"), unit(0.25, "npc"),
-                                            unit(0.5, "npc"), unit(0.5, "npc"),
-                                            unit(0, "radian"));
+                                            unit(0.5, "npc"), unit(0.5, "npc"));
     grid_push_viewport(gr, vp);
 
     rgba_t *green = rgb(0, 1, 0);
