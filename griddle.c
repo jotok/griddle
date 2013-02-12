@@ -232,45 +232,6 @@ rgba(double red, double green, double blue, double alpha) {
 }
 
 /**
- * Allocate a new parameter struct by copying values from the argument struct.
- */
-grid_par_t*
-new_grid_par(grid_par_t par) {
-    grid_par_t *this_par = malloc(sizeof(grid_par_t));
-
-    if (par.color)
-        this_par->color = rgba(par.color->red, par.color->green, 
-                               par.color->blue, par.color->alpha);
-    else 
-        this_par->color = NULL;
-
-    if (par.fill)
-        this_par->fill = rgba(par.fill->red, par.fill->green,
-                              par.fill->blue, par.fill->alpha);
-    else
-        this_par->fill = NULL;
-
-    if (par.lty) {
-        this_par->lty = malloc(strlen(par.lty) + 1);
-        strcpy(this_par->lty, par.lty);
-    } else {
-        this_par->lty = NULL;
-    }
-
-    if (par.lwd)
-        this_par->lwd = unit(par.lwd->value, par.lwd->type);
-    else 
-        this_par->lwd = NULL;
-
-    if (par.font_size)
-        this_par->font_size = unit(par.font_size->value, par.font_size->type);
-    else
-        this_par->font_size = NULL;
-
-    return this_par;
-}
-
-/**
  * Allocate a new parameter struct with parameters set to default values.
  */
 grid_par_t*

@@ -110,9 +110,6 @@ rgba_t*
 rgba(double, double, double, double);
 
 grid_par_t*
-new_grid_par(grid_par_t par);
-
-grid_par_t*
 new_grid_default_par(void);
 
 void
