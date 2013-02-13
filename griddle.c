@@ -356,6 +356,46 @@ new_grid_named_default_viewport(const char *name) {
 }
 
 /**
+ * Allocate a new \ref grid_viewport_t whose native coordinate system is
+ * calculated from the given data.
+ */
+grid_viewport_t*
+new_grid_data_viewport(int data_size, const double *xs, const double *ys) {
+    grid_viewport_t *vp = new_grid_default_viewport();
+
+    if (data_size > 0) {
+        double min, max, pad;
+        min = max = xs[0];
+
+        int i;
+        for (i = 1; i < data_size; i++) {
+            if (xs[i] > max)
+                max = xs[i];
+            else if (xs[i] < min)
+                min = xs[i];
+        }
+
+        pad = 0.1 * (max - min) / 1.8;
+        vp->x_ntv = min - pad;
+        vp->width_ntv = max - min + 2 * pad;
+
+        min = max = ys[0];
+        for (i = 1; i < data_size; i++) {
+            if (ys[i] > max)
+                max = ys[i];
+            else if (ys[i] < min)
+                min = ys[i];
+        }
+
+        pad = 0.1 * (max - min) / 1.8;
+        vp->y_ntv = min - pad;
+        vp->height_ntv = max - min + 2 * pad;
+    }
+
+    return vp;
+}
+
+/**
  * Deallocate a \ref grid_viewport_t.
  *
  * \param vp A viewport.

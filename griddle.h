@@ -107,6 +107,9 @@ new_grid_named_viewport(const char*, unit_t*, unit_t*, unit_t*, unit_t*);
 grid_viewport_t*
 new_grid_named_default_viewport(const char*);
 
+grid_viewport_t*
+new_grid_data_viewport(int, const double*, const double*);
+
 void
 free_grid_viewport(grid_viewport_t*);
 
