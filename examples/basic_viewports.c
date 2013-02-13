@@ -7,9 +7,7 @@ int
 main(void) {
     grid_context_t *gr = new_grid_context(800, 800);
 
-    unit_t lwd = Unit(10, "px");
-    grid_par_t par = {.lwd = &lwd};
-
+    grid_par_t par = {.lty = "dash"};
     grid_rect(gr, unit(0, "npc"), unit(0, "npc"), 
                   unit(1, "npc"), unit(1, "npc"), &par);
 
@@ -34,21 +32,11 @@ main(void) {
     par.color = &content4;
     grid_full_rect(gr, &par);
     par.color = &content1;
-    par.just = "right";
     grid_text(gr, "Some drawing in graphics region 2.",
               NULL, unit(0.8, "npc"), &par);
 
-    par.just = NULL;
-    par.vjust = "bottom";
-    grid_text(gr, "Some bottom-aligned text.", NULL, NULL, &par);
-
-    par.just = NULL;
-    par.vjust = "top";
-    grid_text(gr, "Some top-aligned text.", NULL, NULL, &par);
-
     grid_up_viewport_1(gr);
     grid_down_viewport(gr, "vp1");
-    par.just = "left";
     grid_text(gr, "Some more drawing in graphics region 1.",
               NULL, unit(0.2, "npc"), &par);
 

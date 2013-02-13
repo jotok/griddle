@@ -370,10 +370,11 @@ static void
 grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
     cairo_save(gr->cr);
 
+    double height_npc = unit_to_npc(gr->cr, 'y', vp->height);
+
     cairo_translate(gr->cr, unit_to_npc(gr->cr, 'x', vp->x),
-                            unit_to_npc(gr->cr, 'y', vp->y));
-    cairo_scale(gr->cr, unit_to_npc(gr->cr, 'x', vp->width),
-                        unit_to_npc(gr->cr, 'y', vp->height));
+                            1 - unit_to_npc(gr->cr, 'y', vp->y) - height_npc);
+    cairo_scale(gr->cr, unit_to_npc(gr->cr, 'x', vp->width), height_npc);
 }
 
 /**
@@ -731,13 +732,22 @@ grid_apply_line_parameters(cairo_t *cr, double x1, double y1, double x2, double 
     cairo_set_source_rgba(cr, color->red, color->green, 
                           color->blue, color->alpha);
 
-    // char *lty;
-    // if (!(par && (lty = par->lty)))
-    //     lty = default_par->lty;
+    char *lty;
+    if (!(par && (lty = par->lty)))
+        lty = default_par->lty;
 
-    // if (strncmp(lty, "dash", 4) == 0) {
-    //     double dash_pattern1_npc[grid_dash_pattern1_len];
-    // }
+    if (strncmp(lty, "dash", 4) == 0) {
+        double dash_pattern1_npc[grid_dash_pattern1_len];
+        int i;
+        unit_t this_unit;
+        for (i = 0; i < grid_dash_pattern1_len; i++) {
+            this_unit = Unit(grid_dash_pattern1_px[i], "px");
+            dash_pattern1_npc[i] = unit_to_npc(cr, 'x', &this_unit);
+        }
+        cairo_set_dash(cr, dash_pattern1_npc, grid_dash_pattern1_len, 0);
+    } else {
+        cairo_set_dash(cr, NULL, 0, 0);
+    }
 
     unit_t *lwd;
     if (!(par && (lwd = par->lwd)))
