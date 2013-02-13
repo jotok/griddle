@@ -1,4 +1,4 @@
-EXAMPLES = basic_viewports color_test
+EXAMPLES = basic_viewports color_test sine
 OBJECTS = ../grid_units.o ../griddle.o
 CFLAGS = -g -Wall -I.. \
 		 -I/usr/include/cairo -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include \

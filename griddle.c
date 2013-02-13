@@ -955,7 +955,7 @@ grid_vjust_to_y(char *vjust) {
     unit_t *y;
 
     if (strncmp(vjust, "middle", 1) == 0) {
-        y = unit(0.5, "npc");
+        y = unit_sub(unit(0.5, "npc"), unit(0.5, "line"));
     } else if (strncmp(vjust, "bottom", 1) == 0) {
         y = unit(1, "line");
     } else if (strncmp(vjust, "top", 1) == 0) {
@@ -998,7 +998,9 @@ grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
         font_size = gr->par->font_size;
 
     cairo_t *cr = gr->cr;
-    cairo_set_font_size(cr, unit_to_npc(gr, 'x', font_size));
+    cairo_matrix_t font_matrix = { .xx = unit_to_npc(gr, 'x', font_size), 
+                                   .yy = unit_to_npc(gr, 'y', font_size)};
+    cairo_set_font_matrix(cr, &font_matrix);
 
     cairo_text_extents_t *text_extents = malloc(sizeof(cairo_text_extents_t));
     cairo_text_extents(cr, text, text_extents);
