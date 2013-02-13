@@ -16,28 +16,28 @@
  * NOTE: this function assumes device coordinates are pixels.
  */
 static double
-unit_to_npc_helper(double device_per_npc, double line_per_npc, 
-                   double em_per_npc, unit_t *u)
+unit_to_npc_helper(double device_per_npc, double line_per_npc, double em_per_npc,
+                   double o_ntv, double size_ntv, unit_t *u)
 {
     if (strcmp(u->type, "+") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_per_npc, 
-                                      em_per_npc, u->arg1);
-        double y = unit_to_npc_helper(device_per_npc, line_per_npc, 
-                                      em_per_npc, u->arg2);
+        double x = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+                                      o_ntv, size_ntv, u->arg1);
+        double y = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+                                      o_ntv, size_ntv, u->arg2);
         return x + y;
     } else if (strcmp(u->type, "-") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_per_npc, 
-                                      em_per_npc, u->arg1);
-        double y = unit_to_npc_helper(device_per_npc, line_per_npc, 
-                                      em_per_npc, u->arg2);
+        double x = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+                                      o_ntv, size_ntv, u->arg1);
+        double y = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+                                      o_ntv, size_ntv, u->arg2);
         return x - y;
     } else if (strcmp(u->type, "*") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_per_npc, 
-                                      em_per_npc, u->arg1);
+        double x = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+                                      o_ntv, size_ntv, u->arg1);
         return x * u->value;
     } else if (strcmp(u->type, "/") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_per_npc, 
-                                      em_per_npc, u->arg1);
+        double x = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+                                      o_ntv, size_ntv, u->arg1);
         return x / u->value;
     } else if (strcmp(u->type, "npc") == 0) {
         return u->value;
@@ -47,6 +47,8 @@ unit_to_npc_helper(double device_per_npc, double line_per_npc,
         return u->value * line_per_npc;
     } else if (strcmp(u->type, "em") == 0) {
         return u->value * em_per_npc;
+    } else if (strcmp(u->type, "native") == 0) {
+        return (u->value - o_ntv) / size_ntv;
     } else {
         fprintf(stderr, "Warning: can't convert unit '%s' to npc\n", u->type);
         return 0.0;
@@ -69,18 +71,24 @@ unit_to_npc(grid_context_t *gr, char dim, unit_t *u) {
     cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
     cairo_text_extents(cr, "m", em_extents);
 
-    double device_per_npc = 0.0;
+    double device_per_npc, o_ntv, size_ntv;  
+    device_per_npc = o_ntv = size_ntv = 0.0;
 
     if (dim == 'x') {
         device_per_npc = device_x_per_npc;
+        o_ntv = gr->current_node->vp->x_ntv;
+        size_ntv = gr->current_node->vp->width_ntv;
     } else if (dim == 'y') {
         device_per_npc = device_y_per_npc;
+        o_ntv = gr->current_node->vp->y_ntv;
+        size_ntv = gr->current_node->vp->height_ntv;
     } else {
         fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
     }
 
     double result = unit_to_npc_helper(device_per_npc, font_extents->height,
-                                       em_extents->width, u);
+                                       em_extents->width, o_ntv, size_ntv, u);
+
     free(font_extents);
     free(em_extents);
     return result;
@@ -89,6 +97,7 @@ unit_to_npc(grid_context_t *gr, char dim, unit_t *u) {
 static void
 unit_array_to_npc_helper(double *result, double device_per_npc, 
                          double line_per_npc, double em_per_npc, 
+                         double o_ntv, double size_ntv,
                          int size, unit_array_t *u) 
 {
     int i;
@@ -98,9 +107,9 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
         xs = malloc(size * sizeof(double));
         ys = malloc(size * sizeof(double));
         unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
-                                 size, u->arg1);
+                                 o_ntv, size_ntv, size, u->arg1);
         unit_array_to_npc_helper(ys, device_per_npc, line_per_npc, em_per_npc, 
-                                 size, u->arg1);
+                                 o_ntv, size_ntv, size, u->arg1);
 
         for (i = 0; i < size; i++)
             result[i] = xs[i] + ys[i];
@@ -111,9 +120,9 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
         xs = malloc(size * sizeof(double));
         ys = malloc(size * sizeof(double));
         unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
-                                 size, u->arg1);
+                                 o_ntv, size_ntv, size, u->arg1);
         unit_array_to_npc_helper(ys, device_per_npc, line_per_npc, em_per_npc, 
-                                 size, u->arg1);
+                                 o_ntv, size_ntv, size, u->arg1);
 
         for (i = 0; i < size; i++)
             result[i] = xs[i] - ys[i];
@@ -123,7 +132,7 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
     } else if (strcmp(u->type, "*") == 0) {
         xs = malloc(size * sizeof(double));
         unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
-                                 size, u->arg1);
+                                 o_ntv, size_ntv, size, u->arg1);
 
         for (i = 0; i < size; i++)
             result[i] = xs[i] * u->values[0];
@@ -132,7 +141,7 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
     } else if (strcmp(u->type, "/") == 0) {
         xs = malloc(size * sizeof(double));
         unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
-                                 size, u->arg1);
+                                 o_ntv, size_ntv, size, u->arg1);
 
         for (i = 0; i < size; i++)
             result[i] = xs[i] * u->values[0];
@@ -150,6 +159,9 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
     } else if (strcmp(u->type, "em") == 0) {
         for (i = 0; i < size; i++)
             result[i] = u->values[i] * em_per_npc;
+    } else if (strcmp(u->type, "native") == 0) {
+        for (i = 0; i < size; i++)
+            result[i] = (u->values[i] - o_ntv) / size_ntv;
     } else {
         fprintf(stderr, "Warning: can't convert unit '%s' to npc\n", u->type);
         for (i = 0; i < size; i++)
@@ -161,29 +173,35 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
  * Convert a unit array to a C array of doubles representing NPC values.
  */
 static void
-unit_array_to_npc(double *result, cairo_t *cr, char dim, unit_array_t *u) {
+unit_array_to_npc(double *result, grid_context_t *gr, char dim, unit_array_t *u) {
     double device_x_per_npc = 1.0;
     double device_y_per_npc = 1.0;
-    cairo_user_to_device_distance(cr, &device_x_per_npc, &device_y_per_npc);
+    cairo_user_to_device_distance(gr->cr, &device_x_per_npc, &device_y_per_npc);
 
     cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
-    cairo_font_extents(cr, font_extents);
+    cairo_font_extents(gr->cr, font_extents);
 
     cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
-    cairo_text_extents(cr, "m", em_extents);
+    cairo_text_extents(gr->cr, "m", em_extents);
 
-    double device_per_npc = 0.0;
+    double device_per_npc, o_ntv, size_ntv;
+    device_per_npc = o_ntv = size_ntv = 0.0;
 
     if (dim == 'x') {
         device_per_npc = device_x_per_npc;
+        o_ntv = gr->current_node->vp->x_ntv;
+        size_ntv = gr->current_node->vp->width_ntv;
     } else if (dim == 'y') {
         device_per_npc = device_y_per_npc;
+        o_ntv = gr->current_node->vp->y_ntv;
+        size_ntv = gr->current_node->vp->height_ntv;
     } else {
         fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
     }
 
     unit_array_to_npc_helper(result, device_per_npc, font_extents->height,
-                             em_extents->width, unit_array_size(u), u);
+                             em_extents->width, o_ntv, size_ntv, 
+                             unit_array_size(u), u);
 
     free(font_extents);
     free(em_extents);
@@ -272,7 +290,7 @@ free_grid_par(grid_par_t *par) {
 //
 
 /**
- * Allocate a new \ref grid_viewport_t.
+ * Allocate a new \ref grid_viewport_t. By default, the native scale is NPC.
  *
  * \param x The x coordinate of the center of the new viewport.
  * \param y The y coordinate of the center of the new viewport.
@@ -289,7 +307,8 @@ new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height) {
     vp->height = height;
     vp->name = NULL;
 
-    vp->x_ntv = vp->y_ntv = vp->width_ntv = vp->height_ntv = 0;
+    vp->x_ntv = vp->y_ntv = 0; 
+    vp->width_ntv = vp->height_ntv = 1;
 
     return vp;
 }
@@ -724,43 +743,6 @@ free_grid_context(grid_context_t *gr) {
     free(gr);
 }
 
-/**
- * Determine the native coordinates of the current viewport.
- */
-static void
-grid_get_native_coordinates(grid_viewport_node_t *node,
-                            grid_context_t *gr,
-                            double *x_ntv, double *y_ntv,
-                            double *width_ntv, double *height_ntv)
-{
-    grid_viewport_t *vp = node->vp;
-    if (vp->has_ntv) {
-        *x_ntv = vp->x_ntv;
-        *y_ntv = vp->y_ntv;
-        *width_ntv = vp->width_ntv;
-        *height_ntv = vp->height_ntv;
-        return;
-    } else if (node->parent) {
-        double npc, parent_x_ntv, parent_y_ntv,
-               parent_width_ntv, parent_height_ntv;
-        grid_get_native_coordinates(node->parent, gr,
-                                    &parent_x_ntv, &parent_y_ntv, 
-                                    &parent_width_ntv, &parent_height_ntv);
-
-        npc = unit_to_npc(gr, 'x', vp->x);
-        *x_ntv = parent_x_ntv + parent_width_ntv * npc;
-        npc = unit_to_npc(gr, 'x', vp->width);
-        *width_ntv = parent_width_ntv * npc;
-        npc = unit_to_npc(gr, 'y', vp->y);
-        *y_ntv = parent_y_ntv + parent_height_ntv * npc;
-        npc = unit_to_npc(gr, 'y', vp->height);
-        *height_ntv = parent_height_ntv * npc;
-    } else {
-        fprintf(stderr, "Warning: unable to find parent with native coordinates.\n");
-        *x_ntv = *y_ntv = *width_ntv = *height_ntv = 0;
-    }
-}
-
 static double *grid_dash_pattern1_px = (double[]){10, 5};
 static int grid_dash_pattern1_len = 2;
 
@@ -842,8 +824,8 @@ grid_lines(grid_context_t  *gr, unit_array_t *xs, unit_array_t *ys, grid_par_t *
     double *xs_npc = malloc(x_size * sizeof(double));
     double *ys_npc = malloc(x_size * sizeof(double));
 
-    unit_array_to_npc(xs_npc, cr, 'x', xs);
-    unit_array_to_npc(ys_npc, cr, 'y', ys);
+    unit_array_to_npc(xs_npc, gr, 'x', xs);
+    unit_array_to_npc(ys_npc, gr, 'y', ys);
 
     cairo_new_path(cr);
     cairo_move_to(cr, xs_npc[0], 1 - ys_npc[0]);
