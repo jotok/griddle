@@ -143,6 +143,9 @@ void
 grid_line(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
 
 void
+grid_lines(grid_context_t*, unit_array_t*, unit_array_t*, grid_par_t*);
+
+void
 grid_rect(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
 
 void

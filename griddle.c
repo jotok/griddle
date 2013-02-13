@@ -85,6 +85,109 @@ unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
     return result;
 }
 
+static void
+unit_array_to_npc_helper(double *result, double device_per_npc, 
+                         double line_per_npc, double em_per_npc, 
+                         int size, unit_array_t *u) 
+{
+    int i;
+    double *xs, *ys;
+
+    if (strcmp(u->type, "+") == 0) {
+        xs = malloc(size * sizeof(double));
+        ys = malloc(size * sizeof(double));
+        unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
+                                 size, u->arg1);
+        unit_array_to_npc_helper(ys, device_per_npc, line_per_npc, em_per_npc, 
+                                 size, u->arg1);
+
+        for (i = 0; i < size; i++)
+            result[i] = xs[i] + ys[i];
+
+        free(xs);
+        free(ys);
+    } else if (strcmp(u->type, "-") == 0) {
+        xs = malloc(size * sizeof(double));
+        ys = malloc(size * sizeof(double));
+        unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
+                                 size, u->arg1);
+        unit_array_to_npc_helper(ys, device_per_npc, line_per_npc, em_per_npc, 
+                                 size, u->arg1);
+
+        for (i = 0; i < size; i++)
+            result[i] = xs[i] - ys[i];
+
+        free(xs);
+        free(ys);
+    } else if (strcmp(u->type, "*") == 0) {
+        xs = malloc(size * sizeof(double));
+        unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
+                                 size, u->arg1);
+
+        for (i = 0; i < size; i++)
+            result[i] = xs[i] * u->values[0];
+
+        free(xs);
+    } else if (strcmp(u->type, "/") == 0) {
+        xs = malloc(size * sizeof(double));
+        unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
+                                 size, u->arg1);
+
+        for (i = 0; i < size; i++)
+            result[i] = xs[i] * u->values[0];
+
+        free(xs);
+    } else if (strcmp(u->type, "npc") == 0) {
+        for (i = 0; i < size; i++)
+            result[i] = u->values[i];
+    } else if (strcmp(u->type, "px") == 0) {
+        for (i = 0; i < size; i++)
+            result[i] = u->values[i] / device_per_npc;
+    } else if (strncmp(u->type, "line", 4) == 0) {
+        for (i = 0; i < size; i++)
+            result[i] = u->values[i] / line_per_npc;
+    } else if (strcmp(u->type, "em") == 0) {
+        for (i = 0; i < size; i++)
+            result[i] = u->values[i] * em_per_npc;
+    } else {
+        fprintf(stderr, "Warning: can't convert unit '%s' to npc\n", u->type);
+        for (i = 0; i < size; i++)
+            result[i] = 0.0;
+    }
+}
+
+/**
+ * Convert a unit array to a C array of doubles representing NPC values.
+ */
+static void
+unit_array_to_npc(double *result, cairo_t *cr, char dim, unit_array_t *u) {
+    double device_x_per_npc = 1.0;
+    double device_y_per_npc = 1.0;
+    cairo_user_to_device_distance(cr, &device_x_per_npc, &device_y_per_npc);
+
+    cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
+    cairo_font_extents(cr, font_extents);
+
+    cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
+    cairo_text_extents(cr, "m", em_extents);
+
+    double device_per_npc = 0.0;
+
+    if (dim == 'x') {
+        device_per_npc = device_x_per_npc;
+    } else if (dim == 'y') {
+        device_per_npc = device_y_per_npc;
+    } else {
+        fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
+    }
+
+    unit_array_to_npc_helper(result, device_per_npc, font_extents->height,
+                             em_extents->width, unit_array_size(u), u);
+
+    free(font_extents);
+    free(em_extents);
+}
+
 //
 // graphics parameters
 //
@@ -621,8 +724,7 @@ static int grid_dash_pattern1_len = 2;
  * Apply the graphical parameters, fall back to defaults where applicable.
  */
 static void
-grid_apply_line_parameters(cairo_t *cr, double x1, double y1, double x2, double y2,
-                           grid_par_t *par, grid_par_t *default_par) 
+grid_apply_line_parameters(cairo_t *cr, grid_par_t *par, grid_par_t *default_par) 
 {
     rgba_t *color;
     if (!(par && (color = par->color)))
@@ -659,7 +761,7 @@ grid_apply_line_parameters(cairo_t *cr, double x1, double y1, double x2, double 
  * Draw a line connecting two points.
  */
 void
-grid_line(grid_context_t* gr, unit_t *x1, unit_t *y1, unit_t *x2, unit_t *y2,
+grid_line(grid_context_t *gr, unit_t *x1, unit_t *y1, unit_t *x2, unit_t *y2,
           grid_par_t *par)
 {
     cairo_t *cr = gr->cr;
@@ -672,8 +774,43 @@ grid_line(grid_context_t* gr, unit_t *x1, unit_t *y1, unit_t *x2, unit_t *y2,
     cairo_move_to(cr, x1_npc, 1 - y1_npc);
     cairo_line_to(cr, x2_npc, 1 - y2_npc);
 
-    grid_apply_line_parameters(cr, x1_npc, y1_npc, x2_npc, y2_npc, par, gr->par);
+    grid_apply_line_parameters(cr, par, gr->par);
     cairo_stroke(cr);
+}
+
+void
+grid_lines(grid_context_t  *gr, unit_array_t *xs, unit_array_t *ys, grid_par_t *par) {
+    cairo_t *cr = gr->cr;
+    
+    int x_size = unit_array_size(xs);
+    int y_size = unit_array_size(ys);
+
+    if (x_size <= 0) {
+        fprintf(stderr, "Warning: can't draw 0 length array.\n");
+        return;
+    } else if (x_size != y_size) {
+        fprintf(stderr, "Warning: can't draw arrays of different sizes.\n");
+        return;
+    }
+
+    double *xs_npc = malloc(x_size * sizeof(double));
+    double *ys_npc = malloc(x_size * sizeof(double));
+
+    unit_array_to_npc(xs_npc, cr, 'x', xs);
+    unit_array_to_npc(ys_npc, cr, 'y', ys);
+
+    cairo_new_path(cr);
+    cairo_move_to(cr, xs_npc[0], 1 - ys_npc[0]);
+
+    int i;
+    for (i = 1; i < x_size; i++)
+        cairo_line_to(cr, xs_npc[i], 1 - ys_npc[i]);
+
+    grid_apply_line_parameters(cr, par, gr->par);
+    cairo_stroke(cr);
+
+    free(xs_npc);
+    free(ys_npc);
 }
 
 /**
@@ -699,8 +836,7 @@ grid_rect(grid_context_t *gr, unit_t *x, unit_t *y,
         cairo_fill_preserve(cr);
     }
 
-    grid_apply_line_parameters(cr, x_npc, x_npc + width_npc,
-                               y_npc, y_npc, par, gr->par);
+    grid_apply_line_parameters(cr, par, gr->par);
     cairo_stroke(cr);
 }
 
