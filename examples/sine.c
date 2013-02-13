@@ -17,10 +17,9 @@ main(void) {
       new_grid_viewport(unit(0, "npc"), unit(0.85, "npc"),
                         unit(1, "npc"), unit(0.15, "npc")));
 
-    unit_t font_size = Unit(30, "px");
     par = (grid_par_t){.color = &content1, 
-                       .font_size = &font_size,
-                       .vjust = "middle" };
+                       .font_size = unit(30, "px"),
+                       .vjust = "middle"};
     grid_text(gr, "the sine function", NULL, NULL, &par);
     grid_pop_viewport_1(gr);
 
