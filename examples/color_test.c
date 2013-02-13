@@ -1,5 +1,5 @@
 #include "griddle.h"
-#include "griddle_solarized.h"
+#include "grid_solarized.h"
 
 int
 main(void) {
