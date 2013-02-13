@@ -186,42 +186,6 @@ unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
     return result;
 }
 
-/**
- * Convert a unit to a line width NPC value. Currently, this function assumes
- * that the underlying viewport is not rotated.
- */
-static double
-unit_to_line_width(cairo_t *cr, double x1, double y1, 
-                   double x2, double y2, unit_t *u) 
-{
-    double device_x_per_npc = 1.0;
-    double device_y_per_npc = 1.0;
-    cairo_user_to_device_distance(cr, &device_x_per_npc, &device_y_per_npc);
-
-    double device_per_npc;
-    if (x1 == x2)
-        device_per_npc = device_x_per_npc;
-    else if (y1 == y2)
-        device_per_npc = device_y_per_npc;
-    else {
-        double angle = atan((y2 - y1) / (x2 - x1));
-        device_per_npc = cos(angle) * device_x_per_npc +
-                         (1 - cos(angle)) * device_y_per_npc;
-    }
-
-    cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
-    cairo_font_extents(cr, font_extents);
-    cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
-    cairo_text_extents(cr, "m", em_extents);
-
-    double result = unit_to_npc_helper(device_per_npc, font_extents->height,
-                                       em_extents->width, u);
-    free(font_extents);
-    free(em_extents);
-
-    return result;
-}
-
 //
 // graphics parameters
 //
@@ -736,14 +700,11 @@ free_grid_viewport_tree(grid_viewport_node_t *root) {
     if (root->child)
         free_grid_viewport_tree(root->child);
 
-    if (root->vp)
-        free_grid_viewport(root->vp);
-
     free(root);
 }
 
 /**
- * Deallocate a \ref grid_context_t.
+ * Deallocate a \ref grid_context_t. Does not deallocate viewports.
  */
 void
 free_grid_context(grid_context_t *gr) {
@@ -753,6 +714,9 @@ free_grid_context(grid_context_t *gr) {
     free(gr);
 }
 
+static double *grid_dash_pattern1_px = (double[]){10, 5};
+static int grid_dash_pattern1_len = 2;
+
 /**
  * Apply the graphical parameters, fall back to defaults where applicable.
  */
@@ -761,17 +725,25 @@ grid_apply_line_parameters(cairo_t *cr, double x1, double y1, double x2, double 
                            grid_par_t *par, grid_par_t *default_par) 
 {
     rgba_t *color;
-    unit_t *lwd;
-
     if (!(par && (color = par->color)))
         color = default_par->color;
 
+    cairo_set_source_rgba(cr, color->red, color->green, 
+                          color->blue, color->alpha);
+
+    // char *lty;
+    // if (!(par && (lty = par->lty)))
+    //     lty = default_par->lty;
+
+    // if (strncmp(lty, "dash", 4) == 0) {
+    //     double dash_pattern1_npc[grid_dash_pattern1_len];
+    // }
+
+    unit_t *lwd;
     if (!(par && (lwd = par->lwd)))
         lwd = default_par->lwd;
 
-    cairo_set_source_rgba(cr, color->red, color->green, 
-                          color->blue, color->alpha);
-    cairo_set_line_width(cr, unit_to_line_width(cr, x1, y1, x2, y2, lwd));
+    cairo_set_line_width(cr, unit_to_npc(cr, 'x', lwd));
 }
 
 /**

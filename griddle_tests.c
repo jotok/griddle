@@ -43,15 +43,6 @@ test_units(CuTest *tc) {
 }
 
 void
-test_par(CuTest *tc) {
-    grid_par_t *par = new_grid_par();
-    grid_par_set_str(par->lty, "banana");
-    CuAssertStrEquals(tc, par->lty, "banana");
-
-    free(par);
-}
-
-void
 test_grid_context_constructor(CuTest *tc) {
     grid_context_t *gr = new_grid_context(100, 100);
 
@@ -115,7 +106,6 @@ grid_test_suite(void) {
     CuSuite *suite = CuSuiteNew();
 
     SUITE_ADD_TEST(suite, test_units);
-    SUITE_ADD_TEST(suite, test_par);
     SUITE_ADD_TEST(suite, test_grid_context_constructor);
     SUITE_ADD_TEST(suite, test_grid_viewport_tree);
 
