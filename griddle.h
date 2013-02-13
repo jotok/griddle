@@ -29,7 +29,7 @@ typedef struct {
  */
 typedef struct {
     rgba_t *color, *fill;
-    char *lty;
+    char *lty, *just, *vjust;
     unit_t *lwd, *font_size;
 } grid_par_t;
 

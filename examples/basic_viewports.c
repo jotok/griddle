@@ -28,7 +28,7 @@ main(void) {
                   unit(1, "npc"), unit(1, "npc"), &par);
     par.color = &content1;
     grid_text(gr, "Some drawing in graphics region 1.",
-              unit(0, "npc"), unit(0.8, "npc"), &par);
+              NULL, unit(0.8, "npc"), &par);
 
     grid_up_viewport_1(gr);
     grid_push_viewport(gr, vp2);
@@ -36,13 +36,23 @@ main(void) {
     grid_rect(gr, unit(0, "npc"), unit(0, "npc"), 
                   unit(1, "npc"), unit(1, "npc"), &par);
     par.color = &content1;
+    par.just = "right";
     grid_text(gr, "Some drawing in graphics region 2.",
-              unit(0, "npc"), unit(0.8, "npc"), &par);
+              NULL, unit(0.8, "npc"), &par);
+
+    par.just = NULL;
+    par.vjust = "bottom";
+    grid_text(gr, "Some bottom-aligned text.", NULL, NULL, &par);
+
+    par.just = NULL;
+    par.vjust = "top";
+    grid_text(gr, "Some top-aligned text.", NULL, NULL, &par);
 
     grid_up_viewport_1(gr);
     grid_down_viewport(gr, "vp1");
+    par.just = "left";
     grid_text(gr, "Some more drawing in graphics region 1.",
-              unit_add(unit(0, "npc"), unit(1, "em")), unit(0.2, "npc"), &par);
+              NULL, unit(0.2, "npc"), &par);
 
     cairo_surface_write_to_png(gr->surface, "basic_viewports.png");
 }

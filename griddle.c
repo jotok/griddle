@@ -31,6 +31,9 @@ unit(double value, const char *type) {
     u->type = malloc(strlen(type) + 1);
     strcpy(u->type, type);
 
+    u->arg1 = NULL;
+    u->arg2 = NULL;
+
     return u;
 }
 
@@ -91,7 +94,8 @@ unit_div(unit_t* u, double x) {
 }
 
 /**
- * Deallocate a \ref unit_t.
+ * Deallocate a \ref unit_t. Don't try to free `*type` since the most common
+ * use is to construct a unit using a string literal.
  *
  * \param u A allocated unit.
  * \param free_recursive If true, then this call will recursively free units
@@ -104,7 +108,7 @@ free_unit(unit_t *u) {
     if (u->arg1)
         free_unit(u->arg1);
     if (u->arg2)
-        free_unit(u->arg1);
+        free_unit(u->arg2);
 
     free(u);
 }
@@ -265,6 +269,14 @@ new_grid_default_par(void) {
     par->lty = malloc(strlen(lty) + 1);
     strcpy(par->lty, lty);
 
+    char *just = "center";
+    par->just = malloc(strlen(just) + 1);
+    strcpy(par->just, just);
+
+    char *vjust = "top";
+    par->vjust = malloc(strlen(vjust) + 1);
+    strcpy(par->vjust, vjust);
+
     par->lwd = unit(2, "px");
     par->font_size = unit(20, "px");
 
@@ -359,7 +371,6 @@ new_grid_named_default_viewport(const char *name) {
  * Deallocate a \ref grid_viewport_t.
  *
  * \param vp A viewport.
- * \param free_units If `true`, then free units referenced by the viewport.
  */
 void
 free_grid_viewport(grid_viewport_t *vp) {
@@ -784,6 +795,9 @@ grid_line(grid_context_t* gr, unit_t *x1, unit_t *y1, unit_t *x2, unit_t *y2,
     cairo_stroke(cr);
 }
 
+/**
+ * Draw a rectangle with lower-left corner at `(x, y)`.
+ */
 void
 grid_rect(grid_context_t *gr, unit_t *x, unit_t *y, 
           unit_t *width, unit_t *height, grid_par_t *par) 
@@ -809,16 +823,50 @@ grid_rect(grid_context_t *gr, unit_t *x, unit_t *y,
     cairo_stroke(cr);
 }
 
+static unit_t*
+grid_just_to_x(char *just, double width_npc) {
+    unit_t *x;
+
+    if (strncmp(just, "left", 1) == 0) {
+        x = unit(1, "em");
+    } else if (strncmp(just, "right", 1) == 0) {
+        x = unit_sub(unit_sub(unit(1, "npc"), unit(1, "em")),
+                     unit(width_npc, "npc"));
+    } else if (strncmp(just, "center", 1) == 0) {
+        x = unit_sub(unit(0.5, "npc"), unit(width_npc/2.0, "npc"));
+    } else {
+        fprintf(stderr, "Warning: unknown justification '%s'\n", just);
+        x = unit(0, "npc");
+    }
+
+    return x;
+}
+
+static unit_t*
+grid_vjust_to_y(char *vjust) {
+    unit_t *y;
+
+    if (strncmp(vjust, "middle", 1) == 0) {
+        y = unit(0.5, "npc");
+    } else if (strncmp(vjust, "bottom", 1) == 0) {
+        y = unit(1, "line");
+    } else if (strncmp(vjust, "top", 1) == 0) {
+        y = unit_sub(unit(1, "npc"), unit(1, "line"));
+    } else {
+        fprintf(stderr, "Warning: unknown vertical justification '%s'\n", vjust);
+        y = unit(0, "npc");
+    }
+
+    return y;
+}
+
 void
 grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
           grid_par_t *par) 
 {
-    rgba_t *color;
-    if (par && par->color)
-        color = par->color;
-    else
-        color = gr->par->color;
 
+    // set the font size first so that subsequent distance calculations are
+    // correct.
     unit_t *font_size;
     if (par && par->font_size)
         font_size = par->font_size;
@@ -826,10 +874,48 @@ grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
         font_size = gr->par->font_size;
 
     cairo_t *cr = gr->cr;
-    cairo_set_font_size(cr, unit_to_npc(cr, 'y', font_size));
+    cairo_set_font_size(cr, unit_to_npc(cr, 'x', font_size));
+
+    cairo_text_extents_t *text_extents = malloc(sizeof(cairo_text_extents_t));
+    cairo_text_extents(cr, text, text_extents);
+
+    unit_t *my_x = NULL; 
+
+    if (!x) {
+        if (par && par->just) 
+            my_x = grid_just_to_x(par->just, text_extents->width);
+        else
+            my_x = grid_just_to_x(gr->par->just, text_extents->width);
+
+        x = my_x;
+    }
+
+    unit_t *my_y = NULL;
+
+    if (!y) {
+        if (par && par->vjust) 
+            my_y = grid_vjust_to_y(par->vjust);
+        else
+            my_y = grid_vjust_to_y(gr->par->vjust);
+
+        y = my_y;
+    }
+
+    rgba_t *color;
+    if (par && par->color)
+        color = par->color;
+    else
+        color = gr->par->color;
+
     cairo_new_path(cr);
     cairo_move_to(cr, unit_to_npc(cr, 'x', x), 1 - unit_to_npc(cr, 'y', y));
     cairo_set_source_rgba(cr, color->red, color->blue, 
                           color->green, color->alpha);
     cairo_show_text(cr, text);
+
+    if (my_x)
+        free_unit(my_x);
+    if (my_y)
+        free_unit(my_y);
+    free(text_extents);
 }
