@@ -1,20 +1,12 @@
 #ifndef Griddle_h
 #define Griddle_h
 
+#include "grid_units.h"
+
 #include <stdbool.h>
 #include <cairo.h>
 
 // types
-
-/**
- * A value tagged with a unit type. Using units we can specify "5 pixels + 2
- * lines" and have our program do the right thing.
- */
-typedef struct __unit_t {
-    double value;
-    char *type;
-    struct __unit_t *arg1, *arg2;
-} unit_t;
 
 /**
  * A struct representing an RGBA value. All parameters should take values between
@@ -68,28 +60,6 @@ typedef struct {
     grid_viewport_node_t *root_node, *current_node;
     grid_par_t *par;
 } grid_context_t;
-
-// units
-
-#define Unit(X,T) ((unit_t){.value = X, .type = T})
-
-unit_t*
-unit(double, const char*);
-
-unit_t*
-unit_add(unit_t*, unit_t*);
-
-unit_t*
-unit_sub(unit_t*, unit_t*);
-
-unit_t*
-unit_mul(unit_t*, double);
-
-unit_t*
-unit_div(unit_t*, double);
-
-void
-free_unit(unit_t*);
 
 // graphics parameters
 
