@@ -113,27 +113,37 @@ free_unit(unit_t *u) {
  * NOTE: this function assumes device coordinates are pixels.
  */
 static double
-unit_to_npc_helper(double device_per_npc, double line_height_npc, unit_t *u) {
+unit_to_npc_helper(double device_per_npc, double line_per_npc, 
+                   double em_per_npc, unit_t *u)
+{
     if (strcmp(u->type, "+") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
-        double y = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg2);
+        double x = unit_to_npc_helper(device_per_npc, line_per_npc, 
+                                      em_per_npc, u->arg1);
+        double y = unit_to_npc_helper(device_per_npc, line_per_npc, 
+                                      em_per_npc, u->arg2);
         return x + y;
     } else if (strcmp(u->type, "-") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
-        double y = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg2);
+        double x = unit_to_npc_helper(device_per_npc, line_per_npc, 
+                                      em_per_npc, u->arg1);
+        double y = unit_to_npc_helper(device_per_npc, line_per_npc, 
+                                      em_per_npc, u->arg2);
         return x - y;
     } else if (strcmp(u->type, "*") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
+        double x = unit_to_npc_helper(device_per_npc, line_per_npc, 
+                                      em_per_npc, u->arg1);
         return x * u->value;
     } else if (strcmp(u->type, "/") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_height_npc, u->arg1);
+        double x = unit_to_npc_helper(device_per_npc, line_per_npc, 
+                                      em_per_npc, u->arg1);
         return x / u->value;
     } else if (strcmp(u->type, "npc") == 0) {
         return u->value;
     } else if (strcmp(u->type, "px") == 0) {
         return u->value / device_per_npc;
     } else if (strncmp(u->type, "line", 4) == 0) {
-        return u->value * line_height_npc;
+        return u->value * line_per_npc;
+    } else if (strcmp(u->type, "em") == 0) {
+        return u->value * em_per_npc;
     } else {
         fprintf(stderr, "Warning: can't convert unit '%s' to npc\n", u->type);
         return 0.0;
@@ -151,19 +161,24 @@ unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
 
     cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
     cairo_font_extents(cr, font_extents);
-    double line_height_npc = font_extents->height;
 
-    double result = 0.0;
+    cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
+    cairo_text_extents(cr, "m", em_extents);
+
+    double device_per_npc = 0.0;
 
     if (dim == 'x') {
-        result = unit_to_npc_helper(device_x_per_npc, line_height_npc, u);
+        device_per_npc = device_x_per_npc;
     } else if (dim == 'y') {
-        result = unit_to_npc_helper(device_y_per_npc, line_height_npc, u);
+        device_per_npc = device_y_per_npc;
     } else {
         fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
     }
 
+    double result = unit_to_npc_helper(device_per_npc, font_extents->height,
+                                       em_extents->width, u);
     free(font_extents);
+    free(em_extents);
     return result;
 }
 
@@ -192,10 +207,15 @@ unit_to_line_width(cairo_t *cr, double x1, double y1,
 
     cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
     cairo_font_extents(cr, font_extents);
-    double line_height_npc = font_extents->height;
-    free(font_extents);
+    cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
+    cairo_text_extents(cr, "m", em_extents);
 
-    return unit_to_npc_helper(device_per_npc, line_height_npc, u);
+    double result = unit_to_npc_helper(device_per_npc, font_extents->height,
+                                       em_extents->width, u);
+    free(font_extents);
+    free(em_extents);
+
+    return result;
 }
 
 //
@@ -806,10 +826,10 @@ grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
         font_size = gr->par->font_size;
 
     cairo_t *cr = gr->cr;
+    cairo_set_font_size(cr, unit_to_npc(cr, 'y', font_size));
     cairo_new_path(cr);
     cairo_move_to(cr, unit_to_npc(cr, 'x', x), 1 - unit_to_npc(cr, 'y', y));
     cairo_set_source_rgba(cr, color->red, color->blue, 
                           color->green, color->alpha);
-    cairo_set_font_size(cr, unit_to_npc(cr, 'x', font_size));
     cairo_show_text(cr, text);
 }

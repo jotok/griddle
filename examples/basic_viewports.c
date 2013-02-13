@@ -42,7 +42,7 @@ main(void) {
     grid_up_viewport_1(gr);
     grid_down_viewport(gr, "vp1");
     grid_text(gr, "Some more drawing in graphics region 1.",
-              unit(0, "npc"), unit(0.2, "npc"), &par);
-    
+              unit_add(unit(0, "npc"), unit(1, "em")), unit(0.2, "npc"), &par);
+
     cairo_surface_write_to_png(gr->surface, "basic_viewports.png");
 }
