@@ -103,6 +103,11 @@ free_unit(unit_t*);
  */
 #define RGBA(R,G,B,A) ((rgba_t){ .red = R, .green = G, .blue = B, .alpha = A })
 
+/**
+ * Construct an rgba_t literal with a grayscale value between 0 and 1.
+ */
+#define Grayscale(S) RGB(S,S,S)
+
 rgba_t*
 rgb(double, double, double);
 
