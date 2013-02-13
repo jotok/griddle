@@ -33,6 +33,9 @@ typedef struct {
     unit_t *x, *y, *width, *height;
     grid_par_t *par;
     char *name;
+
+    bool has_ntv;
+    double x_ntv, y_ntv, width_ntv, height_ntv;
 } grid_viewport_t;
 
 /**

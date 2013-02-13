@@ -57,7 +57,8 @@ unit_to_npc_helper(double device_per_npc, double line_per_npc,
  * Convert a unit to a single NPC value.
  */
 static double
-unit_to_npc(cairo_t *cr, char dim, unit_t *u) {
+unit_to_npc(grid_context_t *gr, char dim, unit_t *u) {
+    cairo_t *cr = gr->cr;
     double device_x_per_npc = 1.0;
     double device_y_per_npc = 1.0;
     cairo_user_to_device_distance(cr, &device_x_per_npc, &device_y_per_npc);
@@ -288,6 +289,8 @@ new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height) {
     vp->height = height;
     vp->name = NULL;
 
+    vp->x_ntv = vp->y_ntv = vp->width_ntv = vp->height_ntv = 0;
+
     return vp;
 }
 
@@ -372,11 +375,11 @@ static void
 grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
     cairo_save(gr->cr);
 
-    double height_npc = unit_to_npc(gr->cr, 'y', vp->height);
+    double height_npc = unit_to_npc(gr, 'y', vp->height);
 
-    cairo_translate(gr->cr, unit_to_npc(gr->cr, 'x', vp->x),
-                            1 - unit_to_npc(gr->cr, 'y', vp->y) - height_npc);
-    cairo_scale(gr->cr, unit_to_npc(gr->cr, 'x', vp->width), height_npc);
+    cairo_translate(gr->cr, unit_to_npc(gr, 'x', vp->x),
+                            1 - unit_to_npc(gr, 'y', vp->y) - height_npc);
+    cairo_scale(gr->cr, unit_to_npc(gr, 'x', vp->width), height_npc);
 }
 
 /**
@@ -683,6 +686,10 @@ new_grid_context(int width_px, int height_px) {
     cairo_scale(gr->cr, width_px, height_px);
 
     grid_viewport_t *root = new_grid_named_default_viewport("root");
+    root->x_ntv = root->y_ntv = 0;
+    root->width_ntv = width_px;
+    root->height_ntv = height_px;
+    root->has_ntv = true;
     gr->root_node = new_grid_viewport_node(root);
     gr->current_node = gr->root_node;
 
@@ -717,6 +724,43 @@ free_grid_context(grid_context_t *gr) {
     free(gr);
 }
 
+/**
+ * Determine the native coordinates of the current viewport.
+ */
+static void
+grid_get_native_coordinates(grid_viewport_node_t *node,
+                            grid_context_t *gr,
+                            double *x_ntv, double *y_ntv,
+                            double *width_ntv, double *height_ntv)
+{
+    grid_viewport_t *vp = node->vp;
+    if (vp->has_ntv) {
+        *x_ntv = vp->x_ntv;
+        *y_ntv = vp->y_ntv;
+        *width_ntv = vp->width_ntv;
+        *height_ntv = vp->height_ntv;
+        return;
+    } else if (node->parent) {
+        double npc, parent_x_ntv, parent_y_ntv,
+               parent_width_ntv, parent_height_ntv;
+        grid_get_native_coordinates(node->parent, gr,
+                                    &parent_x_ntv, &parent_y_ntv, 
+                                    &parent_width_ntv, &parent_height_ntv);
+
+        npc = unit_to_npc(gr, 'x', vp->x);
+        *x_ntv = parent_x_ntv + parent_width_ntv * npc;
+        npc = unit_to_npc(gr, 'x', vp->width);
+        *width_ntv = parent_width_ntv * npc;
+        npc = unit_to_npc(gr, 'y', vp->y);
+        *y_ntv = parent_y_ntv + parent_height_ntv * npc;
+        npc = unit_to_npc(gr, 'y', vp->height);
+        *height_ntv = parent_height_ntv * npc;
+    } else {
+        fprintf(stderr, "Warning: unable to find parent with native coordinates.\n");
+        *x_ntv = *y_ntv = *width_ntv = *height_ntv = 0;
+    }
+}
+
 static double *grid_dash_pattern1_px = (double[]){10, 5};
 static int grid_dash_pattern1_len = 2;
 
@@ -724,8 +768,10 @@ static int grid_dash_pattern1_len = 2;
  * Apply the graphical parameters, fall back to defaults where applicable.
  */
 static void
-grid_apply_line_parameters(cairo_t *cr, grid_par_t *par, grid_par_t *default_par) 
+grid_apply_line_parameters(grid_context_t *gr, 
+                           grid_par_t *par, grid_par_t *default_par) 
 {
+    cairo_t *cr = gr->cr;
     rgba_t *color;
     if (!(par && (color = par->color)))
         color = default_par->color;
@@ -743,7 +789,7 @@ grid_apply_line_parameters(cairo_t *cr, grid_par_t *par, grid_par_t *default_par
         unit_t this_unit;
         for (i = 0; i < grid_dash_pattern1_len; i++) {
             this_unit = Unit(grid_dash_pattern1_px[i], "px");
-            dash_pattern1_npc[i] = unit_to_npc(cr, 'x', &this_unit);
+            dash_pattern1_npc[i] = unit_to_npc(gr, 'x', &this_unit);
         }
         cairo_set_dash(cr, dash_pattern1_npc, grid_dash_pattern1_len, 0);
     } else {
@@ -754,7 +800,7 @@ grid_apply_line_parameters(cairo_t *cr, grid_par_t *par, grid_par_t *default_par
     if (!(par && (lwd = par->lwd)))
         lwd = default_par->lwd;
 
-    cairo_set_line_width(cr, unit_to_npc(cr, 'x', lwd));
+    cairo_set_line_width(cr, unit_to_npc(gr, 'x', lwd));
 }
 
 /**
@@ -765,16 +811,16 @@ grid_line(grid_context_t *gr, unit_t *x1, unit_t *y1, unit_t *x2, unit_t *y2,
           grid_par_t *par)
 {
     cairo_t *cr = gr->cr;
-    double x1_npc = unit_to_npc(cr, 'x', x1);
-    double y1_npc = unit_to_npc(cr, 'y', y1);
-    double x2_npc = unit_to_npc(cr, 'x', x2);
-    double y2_npc = unit_to_npc(cr, 'y', y2);
+    double x1_npc = unit_to_npc(gr, 'x', x1);
+    double y1_npc = unit_to_npc(gr, 'y', y1);
+    double x2_npc = unit_to_npc(gr, 'x', x2);
+    double y2_npc = unit_to_npc(gr, 'y', y2);
 
     cairo_new_path(cr);
     cairo_move_to(cr, x1_npc, 1 - y1_npc);
     cairo_line_to(cr, x2_npc, 1 - y2_npc);
 
-    grid_apply_line_parameters(cr, par, gr->par);
+    grid_apply_line_parameters(gr, par, gr->par);
     cairo_stroke(cr);
 }
 
@@ -806,7 +852,7 @@ grid_lines(grid_context_t  *gr, unit_array_t *xs, unit_array_t *ys, grid_par_t *
     for (i = 1; i < x_size; i++)
         cairo_line_to(cr, xs_npc[i], 1 - ys_npc[i]);
 
-    grid_apply_line_parameters(cr, par, gr->par);
+    grid_apply_line_parameters(gr, par, gr->par);
     cairo_stroke(cr);
 
     free(xs_npc);
@@ -821,10 +867,10 @@ grid_rect(grid_context_t *gr, unit_t *x, unit_t *y,
           unit_t *width, unit_t *height, grid_par_t *par) 
 {
     cairo_t *cr = gr->cr;
-    double x_npc = unit_to_npc(cr, 'x', x);
-    double y_npc = unit_to_npc(cr, 'y', y);
-    double width_npc = unit_to_npc(cr, 'x', width);
-    double height_npc = unit_to_npc(cr, 'y', height);
+    double x_npc = unit_to_npc(gr, 'x', x);
+    double y_npc = unit_to_npc(gr, 'y', y);
+    double width_npc = unit_to_npc(gr, 'x', width);
+    double height_npc = unit_to_npc(gr, 'y', height);
 
     cairo_new_path(cr);
     cairo_rectangle(cr, x_npc, 1 - y_npc - height_npc, width_npc, height_npc);
@@ -836,7 +882,7 @@ grid_rect(grid_context_t *gr, unit_t *x, unit_t *y,
         cairo_fill_preserve(cr);
     }
 
-    grid_apply_line_parameters(cr, par, gr->par);
+    grid_apply_line_parameters(gr, par, gr->par);
     cairo_stroke(cr);
 }
 
@@ -930,7 +976,7 @@ grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
         font_size = gr->par->font_size;
 
     cairo_t *cr = gr->cr;
-    cairo_set_font_size(cr, unit_to_npc(cr, 'x', font_size));
+    cairo_set_font_size(cr, unit_to_npc(gr, 'x', font_size));
 
     cairo_text_extents_t *text_extents = malloc(sizeof(cairo_text_extents_t));
     cairo_text_extents(cr, text, text_extents);
@@ -964,7 +1010,7 @@ grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
         color = gr->par->color;
 
     cairo_new_path(cr);
-    cairo_move_to(cr, unit_to_npc(cr, 'x', x), 1 - unit_to_npc(cr, 'y', y));
+    cairo_move_to(cr, unit_to_npc(gr, 'x', x), 1 - unit_to_npc(gr, 'y', y));
     cairo_set_source_rgba(cr, color->red, color->blue, 
                           color->green, color->alpha);
     cairo_show_text(cr, text);
