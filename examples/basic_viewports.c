@@ -7,9 +7,8 @@ int
 main(void) {
     grid_context_t *gr = new_grid_context(800, 800);
 
-    grid_par_t par = {.lty = "dash"};
-    grid_rect(gr, unit(0, "npc"), unit(0, "npc"), 
-                  unit(1, "npc"), unit(1, "npc"), &par);
+    grid_par_t par = {.lty = "dash", .fill = &lightbg1};
+    grid_full_rect(gr, &par);
 
     grid_viewport_t *vp1 = new_grid_named_viewport("vp1",
                              unit(0, "npc"), unit(0.5, "npc"),
@@ -20,7 +19,7 @@ main(void) {
 
     grid_push_viewport(gr, vp1);
     unit_t font_size = Unit(18, "px");
-    par = (grid_par_t){.color = &content4, .fill = &lightbg1, 
+    par = (grid_par_t){.color = &content4, .fill = &lightbg2, 
                        .font_size = &font_size};
     grid_full_rect(gr, &par);
     par.color = &content1;
