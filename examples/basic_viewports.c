@@ -24,8 +24,7 @@ main(void) {
     unit_t font_size = Unit(18, "px");
     par = (grid_par_t){.color = &content4, .fill = &lightbg1, 
                        .font_size = &font_size};
-    grid_rect(gr, unit(0, "npc"), unit(0, "npc"), 
-                  unit(1, "npc"), unit(1, "npc"), &par);
+    grid_full_rect(gr, &par);
     par.color = &content1;
     grid_text(gr, "Some drawing in graphics region 1.",
               NULL, unit(0.8, "npc"), &par);
@@ -33,8 +32,7 @@ main(void) {
     grid_up_viewport_1(gr);
     grid_push_viewport(gr, vp2);
     par.color = &content4;
-    grid_rect(gr, unit(0, "npc"), unit(0, "npc"), 
-                  unit(1, "npc"), unit(1, "npc"), &par);
+    grid_full_rect(gr, &par);
     par.color = &content1;
     par.just = "right";
     grid_text(gr, "Some drawing in graphics region 2.",

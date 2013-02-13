@@ -176,6 +176,9 @@ void
 grid_rect(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
 
 void
+grid_full_rect(grid_context_t*, grid_par_t*);
+
+void
 grid_text(grid_context_t*, const char*, unit_t*, unit_t*, grid_par_t*);
 
 #endif

@@ -823,6 +823,25 @@ grid_rect(grid_context_t *gr, unit_t *x, unit_t *y,
     cairo_stroke(cr);
 }
 
+/**
+ * Draw a rectangle that exactly occupies the current viewport. this command
+ * can be used to fill backgrounds and draw borders on viewports. Equivalent
+ * to 
+ *
+ *     grid_rect(gr, unit(0, "npc"), unit(0, "npc"), 
+ *                   unit(1, "npc"), unit(1, "npc"), par);
+ */
+void
+grid_full_rect(grid_context_t *gr, grid_par_t *par) {
+    unit_t zero = Unit(0, "npc");
+    unit_t one = Unit(1, "npc");
+    grid_rect(gr, &zero, &zero, &one, &one, par);
+}
+
+/**
+ * Returns a \ref unit_t indicating where to place the `x`-coordinate so that
+ * text with width `width_npc` has the alignment given by `just`.
+ */
 static unit_t*
 grid_just_to_x(char *just, double width_npc) {
     unit_t *x;
@@ -842,6 +861,10 @@ grid_just_to_x(char *just, double width_npc) {
     return x;
 }
 
+/**
+ * Returns a \ref unit_t indicating where to place the `y`-coordinate so that
+ * text has the vertical alignment given by `vjust`.
+ */
 static unit_t*
 grid_vjust_to_y(char *vjust) {
     unit_t *y;
@@ -860,6 +883,22 @@ grid_vjust_to_y(char *vjust) {
     return y;
 }
 
+/**
+ * Write the given text with lower-left corner of the displayed text at `(x, y)`.
+ * See the parameter description for details.
+ *
+ * \param gr The grid context.
+ * \param text The text to be displayed.
+ * \param x The x-coordinate of the lower left corner of the displayed text.
+ *   If `x` is `NULL`, set the horizontal alignment according to the value of
+ *   `par->just` (falling back on the global default). `just` should be one of
+ *   "left", "right", or "center".
+ * \param y The y-coordinate of the lower left corner of the displayed text.
+ *   If `y` is `NULL`, set the vertical alignment according to the value of
+ *   `par->vjust` (falling back on the global default). `vjust` should be one of
+ *   "top", "middle", and "bottom".
+ * \param par Graphical parameters to apply to this drawing command.
+ */
 void
 grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
           grid_par_t *par) 
