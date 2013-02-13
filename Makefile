@@ -1,4 +1,3 @@
-P = example
 OBJECTS = griddle.o
 CFLAGS = -g -Wall \
 		 -I/usr/include/cairo -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include \
@@ -6,17 +5,15 @@ CFLAGS = -g -Wall \
 LDLIBS = -lcairo -lm
 CC=c99
 
-$(P): $(OBJECTS)
+all: $(OBJECTS)
 
 griddle_tests: $(OBJECTS) CuTest.o
-
-color_test: $(OBJECTS)
 
 test: griddle_tests
 	./griddle_tests
 
 doc: griddle.h griddle.c
-	doxygen doxygen_config
+	doxygen Doxyfile
 
 clean:
-	rm -rf $(OBJECTS) CuTest.o griddle_tests example hello.png
+	rm -rf $(OBJECTS) CuTest.o griddle_tests

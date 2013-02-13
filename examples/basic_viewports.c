@@ -44,5 +44,5 @@ main(void) {
     grid_text(gr, "Some more drawing in graphics region 1.",
               unit(0, "npc"), unit(0.2, "npc"), &par);
     
-    cairo_surface_write_to_png(gr->surface, "griddle.png");
+    cairo_surface_write_to_png(gr->surface, "basic_viewports.png");
 }
