@@ -847,11 +847,11 @@ new_grid_context(int width_px, int height_px) {
 /**
  * Recursively deallocate a viewport tree and referenced viewports. The
  * implementation assumes the top-level root node does not have any siblings.
+ *
+ * \todo Current implementation is incomplete, it should free parameters.
  */
 void
 free_grid_viewport_tree(grid_viewport_node_t *root) {
-    // TODO should free parameters
-
     if (root->gege)
         free_grid_viewport_tree(root->gege);
 
@@ -1135,6 +1135,11 @@ grid_text(grid_context_t *gr, const char *text,
     free(text_extents);
 }
 
+/**
+ * Draw tick marks along the x-axis at the specified values.
+ *
+ * \todo Labeled ticks.
+ */
 void
 grid_xaxis(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
     grid_apply_line_parameters(gr, par, gr->par);

@@ -31,13 +31,13 @@ main(void) {
 
     grid_push_viewport(gr, new_grid_plot_viewport(gr, 4.1, 1.1, 3.1, 3.1));
     grid_push_viewport(gr, new_grid_data_viewport(100, x, y));
-    grid_set_line_width(gr, unit(5, "px"));
 
     par = (grid_par_t){.color = &transparent, .fill = &bg2};
     grid_full_rect(gr, &par);
 
     unit_array_t x_units = UnitArray(100, x, "native");
     unit_array_t y_units = UnitArray(100, y, "native");
+    grid_set_line_width(gr, unit(5, "px"));
     par = (grid_par_t){.color = &blue};
     grid_lines(gr, &x_units, &y_units, &par);
 
@@ -61,11 +61,6 @@ main(void) {
 
     par = (grid_par_t){.color = &violet};
     grid_lines(gr, &x_units, &y_units, &par);
-
-    double ticks[] = {0, 1, 2, 3, 4, 5, 6};
-    unit_array_t u_ticks = UnitArray(7, ticks, "native");
-    par = (grid_par_t){.lwd = unit(2, "px"), .color = &bg2};
-    grid_xaxis(gr, &u_ticks, &par);
 
     cairo_surface_write_to_png(gr->surface, "sine.png");
 }
