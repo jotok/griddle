@@ -1122,3 +1122,24 @@ grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
         free_unit(my_y);
     free(text_extents);
 }
+
+void
+grid_xaxis(grid_context_t *gr, const unit_array_t *at, grid_par_t *par) {
+    grid_apply_line_parameters(gr, par, gr->par);
+
+    unit_t th = Unit(0.5, "lines");
+    double tick_height = unit_to_npc(gr, 'y', &th);
+
+    int i;
+    double npc;
+    unit_t u;
+    for (i = 0; i < at->size; i++) {
+        u = Unit(at->values[i], at->type);
+        npc = unit_to_npc(gr, 'x', &u);
+
+        cairo_new_path(gr->cr);
+        cairo_move_to(gr->cr, npc, 1);
+        cairo_line_to(gr->cr, npc, 1 + tick_height);
+        cairo_stroke(gr->cr);
+    }
+}

@@ -13,11 +13,12 @@ main(void) {
     grid_par_t par = {.color = &transparent, .fill = &lightbg1};
     grid_full_rect(gr, &par);
 
-    grid_set_font_size(gr, unit(30, "px"));
     grid_push_viewport(gr,
-      new_grid_viewport(unit(0, "npc"), unit_sub(unit(1, "npc"), unit(2, "lines")),
-                        unit(1, "npc"), unit(2, "lines")));
-    par = (grid_par_t){.color = &content1, .vjust = "middle"};
+      new_grid_viewport(unit(0, "npc"), unit_sub(unit(1, "npc"), unit(4.1, "lines")),
+                        unit(1, "npc"), unit(4.1, "lines")));
+    par = (grid_par_t){.color = &content1, 
+                       .vjust = "middle", 
+                       .font_size = unit(30, "px")};
     grid_text(gr, "the sine function", NULL, NULL, &par);
     grid_pop_viewport_1(gr);
 
@@ -28,11 +29,11 @@ main(void) {
         y[i] = sin(x[i]);
     }
 
-    grid_push_viewport(gr, new_grid_plot_viewport(gr, 2, 1, 1, 1));
+    grid_push_viewport(gr, new_grid_plot_viewport(gr, 4.1, 1.1, 3.1, 3.1));
     grid_push_viewport(gr, new_grid_data_viewport(100, x, y));
     grid_set_line_width(gr, unit(5, "px"));
 
-    par = (grid_par_t){.fill = &bg2};
+    par = (grid_par_t){.color = &transparent, .fill = &bg2};
     grid_full_rect(gr, &par);
 
     unit_array_t x_units = UnitArray(100, x, "native");
@@ -60,6 +61,11 @@ main(void) {
 
     par = (grid_par_t){.color = &violet};
     grid_lines(gr, &x_units, &y_units, &par);
+
+    double ticks[] = {0, 1, 2, 3, 4, 5, 6};
+    unit_array_t u_ticks = UnitArray(7, ticks, "native");
+    par = (grid_par_t){.lwd = unit(2, "px"), .color = &bg2};
+    grid_xaxis(gr, &u_ticks, &par);
 
     cairo_surface_write_to_png(gr->surface, "sine.png");
 }
