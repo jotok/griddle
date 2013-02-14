@@ -13,13 +13,11 @@ main(void) {
     grid_par_t par = {.color = &transparent, .fill = &lightbg1};
     grid_full_rect(gr, &par);
 
+    grid_set_font_size(gr, unit(30, "px"));
     grid_push_viewport(gr,
-      new_grid_viewport(unit(0, "npc"), unit(0.85, "npc"),
-                        unit(1, "npc"), unit(0.15, "npc")));
-
-    par = (grid_par_t){.color = &content1, 
-                       .font_size = unit(30, "px"),
-                       .vjust = "middle"};
+      new_grid_viewport(unit(0, "npc"), unit_sub(unit(1, "npc"), unit(2, "lines")),
+                        unit(1, "npc"), unit(2, "lines")));
+    par = (grid_par_t){.color = &content1, .vjust = "middle"};
     grid_text(gr, "the sine function", NULL, NULL, &par);
     grid_pop_viewport_1(gr);
 
@@ -34,7 +32,9 @@ main(void) {
     data_vp->x = unit(0.05, "npc");
     data_vp->y = unit(0.05, "npc");
     data_vp->width = unit(0.9, "npc");
-    data_vp->height = unit(0.8, "npc");
+    data_vp->height = unit_sub(unit(1, "npc"),
+                               unit_add(unit(0.05, "npc"),
+                                        unit(2, "lines")));
     grid_push_viewport(gr, data_vp);
 
     par = (grid_par_t){.fill = &bg2};

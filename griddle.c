@@ -17,7 +17,7 @@
  */
 static double
 unit_to_npc_helper(double device_per_npc, double line_per_npc, double em_per_npc,
-                   double o_ntv, double size_ntv, unit_t *u)
+                   double o_ntv, double size_ntv, const unit_t *u)
 {
     if (strcmp(u->type, "+") == 0) {
         double x = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
@@ -59,7 +59,7 @@ unit_to_npc_helper(double device_per_npc, double line_per_npc, double em_per_npc
  * Convert a unit to a single NPC value.
  */
 static double
-unit_to_npc(grid_context_t *gr, char dim, unit_t *u) {
+unit_to_npc(grid_context_t *gr, char dim, const unit_t *u) {
     cairo_t *cr = gr->cr;
     double device_x_per_npc = 1.0;
     double device_y_per_npc = 1.0;
@@ -396,6 +396,27 @@ new_grid_data_viewport(int data_size, const double *xs, const double *ys) {
 }
 
 /**
+ * Allocate a \ref grid_viewport_t with margins given by the arguments. Argument
+ * values are interpreted as number of lines in the current font.
+ */
+grid_viewport_t*
+new_grid_plot_viewport(grid_context_t *gr, 
+                       double top, double right, double bottom, double left) 
+{
+    unit_t *x = unit(left, "lines");
+
+    unit_t *y = unit(bottom, "lines");
+
+    unit_t *width = unit_sub(unit(1, "npc"), 
+                             unit_add(unit(left, "lines"), unit(right, "lines")));
+
+    unit_t *height = unit_sub(unit(1, "npc"), 
+                              unit_add(unit(top, "lines"), unit(bottom, "lines")));
+
+    return new_grid_viewport(x, y, width, height);
+}
+
+/**
  * Deallocate a \ref grid_viewport_t.
  *
  * \param vp A viewport.
@@ -443,10 +464,30 @@ grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
 
 /**
  * Push a viewport onto the tree. The viewport becomes a leaf of the current
- * viewport and becomes the new current viewport.
+ * viewport and becomes the new current viewport. This function acts
+ * destructively on `vp->x`, `vp->y`, `vp->width`, and `vp->height`.
  */
 void
 grid_push_viewport(grid_context_t *gr, grid_viewport_t *vp) {
+    // convert viewport units to npc so that distances based on graphics
+    // parameters (e.g., em, lines) reflect the current state.
+
+    unit_t *x = unit(unit_to_npc(gr, 'x', vp->x), "npc");
+    free_unit(vp->x);
+    vp->x = x;
+
+    unit_t *y = unit(unit_to_npc(gr, 'y', vp->y), "npc");
+    free_unit(vp->y);
+    vp->y = y;
+
+    unit_t *width = unit(unit_to_npc(gr, 'x', vp->width), "npc");
+    free_unit(vp->width);
+    vp->width = width;
+
+    unit_t *height = unit(unit_to_npc(gr, 'y', vp->height), "npc");
+    free_unit(vp->height);
+    vp->height = height;
+
     grid_viewport_node_t *node = new_grid_viewport_node(vp);
 
     if (gr->current_node->child) {
@@ -727,6 +768,39 @@ grid_seek_viewport(grid_context_t *gr, const char *name) {
 // draw functions
 //
 
+static void
+grid_apply_font_size(grid_context_t *gr, const unit_t *font_size) {
+    cairo_matrix_t font_matrix = { .xx = unit_to_npc(gr, 'x', font_size), 
+                                   .yy = unit_to_npc(gr, 'y', font_size)};
+    cairo_set_font_matrix(gr->cr, &font_matrix);
+}
+
+/**
+ * Deallocate the current font size and set it equal to the given value.
+ */
+void
+grid_set_font_size(grid_context_t *gr, unit_t *font_size) {
+    free_unit(gr->par->font_size);
+    gr->par->font_size = font_size;
+    grid_apply_font_size(gr, font_size);
+}
+
+static void
+grid_apply_line_width(grid_context_t *gr, unit_t *lwd) {
+    cairo_set_line_width(gr->cr, unit_to_npc(gr, 'x', lwd));
+}
+
+
+/**
+ * Deallocate the current line width and set it equal to the given value.
+ */
+void
+grid_set_line_width(grid_context_t *gr, unit_t *lwd) {
+    free_unit(gr->par->lwd);
+    gr->par->lwd = lwd;
+    grid_apply_line_width(gr, lwd);
+}
+
 /**
  * Allocate a new grid context. The grid context contains a reference to a cairo
  * image surface with the given width and height that it can draw to.
@@ -752,7 +826,12 @@ new_grid_context(int width_px, int height_px) {
     gr->root_node = new_grid_viewport_node(root);
     gr->current_node = gr->root_node;
 
-    gr->par = new_grid_default_par();
+    grid_par_t *par = new_grid_default_par();
+    gr->par = par;
+
+    // set the font size and line width (defaults should be in pixels)
+    grid_apply_font_size(gr, par->font_size);
+    grid_apply_line_width(gr, par->lwd);
 
     return gr;
 }
@@ -822,7 +901,7 @@ grid_apply_line_parameters(grid_context_t *gr,
     if (!(par && (lwd = par->lwd)))
         lwd = default_par->lwd;
 
-    cairo_set_line_width(cr, unit_to_npc(gr, 'x', lwd));
+    grid_apply_line_width(gr, lwd);
 }
 
 /**
@@ -997,11 +1076,9 @@ grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
     else
         font_size = gr->par->font_size;
 
-    cairo_t *cr = gr->cr;
-    cairo_matrix_t font_matrix = { .xx = unit_to_npc(gr, 'x', font_size), 
-                                   .yy = unit_to_npc(gr, 'y', font_size)};
-    cairo_set_font_matrix(cr, &font_matrix);
+    grid_apply_font_size(gr, font_size);
 
+    cairo_t *cr = gr->cr;
     cairo_text_extents_t *text_extents = malloc(sizeof(cairo_text_extents_t));
     cairo_text_extents(cr, text, text_extents);
 

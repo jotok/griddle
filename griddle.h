@@ -110,6 +110,9 @@ new_grid_named_default_viewport(const char*);
 grid_viewport_t*
 new_grid_data_viewport(int, const double*, const double*);
 
+grid_viewport_t*
+new_grid_plot_viewport(grid_context_t*, double, double, double, double);
+
 void
 free_grid_viewport(grid_viewport_t*);
 
@@ -135,6 +138,12 @@ int
 grid_seek_viewport(grid_context_t*, const char*);
 
 // draw functions
+
+void
+grid_set_font_size(grid_context_t*, unit_t*);
+
+void
+grid_set_line_width(grid_context_t*, unit_t*);
 
 grid_context_t*
 new_grid_context(int, int);
