@@ -1,7 +1,7 @@
 griddle
 =======
 
-`griddle` aims to be a C implementation using [cairo](http://cairographics.org/) of a subset of the [grid graphics](http://www.stat.auckland.ac.nz/~paul/grid/grid.html) package for R. I'm copying grid so shamelessly that the documentation for that package provides a good introduction to `griddle`. As I write this, there is still a lot of work to do, but enough bits are implemented that I can give you an idea of what I'm going for. The following code is taken from [examples/sine.c](https://github.com/jotok/griddle/blob/master/examples/sine.c).
+`griddle` aims to be a C implementation using [cairo](http://cairographics.org/) of the procedural parts of the [grid graphics](http://www.stat.auckland.ac.nz/~paul/grid/grid.html) package for R. I'm copying grid so shamelessly that the documentation for that package provides a good introduction to `griddle`. As I write this, there is still a lot of work to do, but enough bits are implemented that I can give you an idea of what I'm going for. The following code is taken from [examples/sine.c](https://github.com/jotok/griddle/blob/master/examples/sine.c).
 
 ```c
 grid_context_t *gr = new_grid_context(800, 600);
@@ -14,7 +14,7 @@ grid_par_t par = {.color = &transparent, .fill = &lightbg1};
 grid_full_rect(gr, &par);
 ```
 
-Create a parameter struct with the specified `color` and `fill` fields. `color` gives the foreground color for drawing commands, and `fill` gives the background color. `transparent` and `lightbg1` are defined in [grid\_solarized.h](https://github.com/jotok/griddle/blob/master/grid_solarized.h), which defines a palette of colors lifted from the [solarized](http://ethanschoonover.com/solarized) color scheme.
+Create a parameter struct with the specified `color` and `fill` fields. `color` gives the foreground color for drawing commands, and `fill` gives the background color. `transparent` and `lightbg1` are defined in [grid\_solarized.h](https://github.com/jotok/griddle/blob/master/grid_solarized.h) as part of a palette of colors lifted from the [solarized](http://ethanschoonover.com/solarized) color scheme.
 
 After we set the parameters, we draw a "full rectangle", meaning we draw a rectangle that takes up the entire viewport.
 
@@ -24,15 +24,15 @@ grid_push_viewport(gr,
                     unit(1, "npc"), unit(4.1, "lines")));
 ```
 
-The `grid_push_viewport` function adds a new viewport to the viewport tree. Drawing commands are understood in the context of the current viewport. The extents of the new viewport are given as units which are understood in terms of the current viewport. The x-coordinate of the lower-left corner of the new viewport is given as `unit(0, "npc")`. "npc" stands for "normalized point coordinate; every viewport has lower left corner (0, 0) and upper right corner (1, 1) in npc. Since the x-coordinate of the new viewport is 0 npc, the left side of the new viewport will align with the left side of the current viewport.
+The `grid_push_viewport` function adds a new viewport to the viewport tree. Drawing commands are understood in the context of the current viewport. The extents of the new viewport are given as units which are likewise understood in terms of the current viewport. The arguments to `new_grid_viewport` are the x-coordinate, the y-coordinate, the width, and the height. The coordinates refer to the lower-left corner of the viewport. Here, the x-coordinate is given as `unit(0, "npc")`. "npc" stands for "normalized point coordinate"; every viewport has lower left corner (0, 0) and upper right corner (1, 1) in npc. Thus the left side of the new viewport will align with the left side of the current viewport.
 
-The y coordinate (of the lower left corner) of the new viewport is given by to be
+The y coordinate of the new viewport is given as
 
 ```c
 unit_sub(unit(1, "npc"), unit(4.1, "lines"))
 ```
 
-which we might write more simply as "1 npc - 4.1 lines". That means the y-coordinate will be 4.1 lines below the top of the current viewport, where a line is the height of a line of text in the current font. Similarly, we set the width of the new viewport to be 1 npc (i.e., full width) and the hight to be 4.1 lines.
+which we might write more naturally as "1 npc - 4.1 lines". That means the y-coordinate will be 4.1 lines below the top of the current viewport, where a line is the height of a line of text in the current font. Similarly, we set the width of the new viewport to be 1 npc (i.e., full width) and the hight to be 4.1 lines.
 
 ```c
 par = (grid_par_t){.color = &content1, 
@@ -58,9 +58,9 @@ grid_push_viewport(gr, new_grid_plot_viewport(gr, 4.1, 1.1, 3.1, 3.1));
 grid_push_viewport(gr, new_grid_data_viewport(100, x, y));
 ```
 
-These commands fill two arrays with data that we'd like to plot and push two new viewports on a tree. For this example i want to plot a sine curve, so I fill an array with 100 values between 0 and 2 * Pi, and I fill a second array with the sine function evaluate at those points.
+These commands fill two arrays with data that we'd like to plot and push two new viewports on a tree. For this example I want to plot a sine curve, so I fill an array with 100 values between 0 and 2 * Pi, and I fill a second array with the sine function evaluated at those points.
 
-The first new viewport is constructed using the convenience function `new_grid_plot_viewport`. It handles the common need to create a data viewport with margins on all sides. The numeric arguments give the top, right, bottom, and left margins which are taken to be in "lines" (which is why we need to pass the current grid context to this constructor). `new_grid_data_viewport` constructs a viewport that we can use to display the points defined by `x` and `y`. In particular, it constructs a coordinate system in units called "native" in which all the given points will be visible.
+The first new viewport is constructed using the convenience function `new_grid_plot_viewport`. It handles the common need to create a data viewport with margins on all sides. The numeric arguments give the top, right, bottom, and left margins which are taken to be in "lines" (which is why we need to pass the current grid context to this constructor). `new_grid_data_viewport` constructs a viewport that we can use to display the points defined by `x` and `y`. In particular, it defines a coordinate system for the new viewport that can be referenced by constructing units of type "native".
 
 ```c
 par = (grid_par_t){.color = &transparent, .fill = &bg2};
