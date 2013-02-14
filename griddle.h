@@ -139,10 +139,10 @@ grid_seek_viewport(grid_context_t*, const char*);
 
 // draw functions
 
-void
+unit_t*
 grid_set_font_size(grid_context_t*, unit_t*);
 
-void
+unit_t*
 grid_set_line_width(grid_context_t*, unit_t*);
 
 grid_context_t*
@@ -155,21 +155,25 @@ void
 free_grid_context(grid_context_t*);
 
 void
-grid_line(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
+grid_line(grid_context_t*, const unit_t*, const unit_t*, 
+          const unit_t*, const unit_t*, const grid_par_t*);
 
 void
-grid_lines(grid_context_t*, unit_array_t*, unit_array_t*, grid_par_t*);
+grid_lines(grid_context_t*, const unit_array_t*, const unit_array_t*, 
+           const grid_par_t*);
 
 void
-grid_rect(grid_context_t*, unit_t*, unit_t*, unit_t*, unit_t*, grid_par_t*);
+grid_rect(grid_context_t*, const unit_t*, const unit_t*, 
+          const unit_t*, const unit_t*, const grid_par_t*);
 
 void
-grid_full_rect(grid_context_t*, grid_par_t*);
+grid_full_rect(grid_context_t*, const grid_par_t*);
 
 void
-grid_text(grid_context_t*, const char*, unit_t*, unit_t*, grid_par_t*);
+grid_text(grid_context_t*, const char*, const unit_t*, const unit_t*, 
+          const grid_par_t*);
 
 void
-grid_xaxis(grid_context_t*, const unit_array_t*, grid_par_t*);
+grid_xaxis(grid_context_t*, const unit_array_t*, const grid_par_t*);
 
 #endif

@@ -98,7 +98,7 @@ static void
 unit_array_to_npc_helper(double *result, double device_per_npc, 
                          double line_per_npc, double em_per_npc, 
                          double o_ntv, double size_ntv,
-                         int size, unit_array_t *u) 
+                         int size, const unit_array_t *u) 
 {
     int i;
     double *xs, *ys;
@@ -173,7 +173,9 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
  * Convert a unit array to a C array of doubles representing NPC values.
  */
 static void
-unit_array_to_npc(double *result, grid_context_t *gr, char dim, unit_array_t *u) {
+unit_array_to_npc(double *result, grid_context_t *gr, char dim, 
+                  const unit_array_t *u) 
+{
     double device_x_per_npc = 1.0;
     double device_y_per_npc = 1.0;
     cairo_user_to_device_distance(gr->cr, &device_x_per_npc, &device_y_per_npc);
@@ -776,13 +778,16 @@ grid_apply_font_size(grid_context_t *gr, const unit_t *font_size) {
 }
 
 /**
- * Deallocate the current font size and set it equal to the given value.
+ * Set the global font size to the given value.
+ *
+ * \return The old font size.
  */
-void
+unit_t*
 grid_set_font_size(grid_context_t *gr, unit_t *font_size) {
-    free_unit(gr->par->font_size);
+    unit_t *old = gr->par->font_size;
     gr->par->font_size = font_size;
     grid_apply_font_size(gr, font_size);
+    return old;
 }
 
 static void
@@ -792,13 +797,16 @@ grid_apply_line_width(grid_context_t *gr, unit_t *lwd) {
 
 
 /**
- * Deallocate the current line width and set it equal to the given value.
+ * Set the global line width to the given value.
+ *
+ * \return The old line width.
  */
-void
+unit_t*
 grid_set_line_width(grid_context_t *gr, unit_t *lwd) {
-    free_unit(gr->par->lwd);
+    unit_t *old = gr->par->lwd;
     gr->par->lwd = lwd;
     grid_apply_line_width(gr, lwd);
+    return old;
 }
 
 /**
@@ -842,6 +850,8 @@ new_grid_context(int width_px, int height_px) {
  */
 void
 free_grid_viewport_tree(grid_viewport_node_t *root) {
+    // TODO should free parameters
+
     if (root->gege)
         free_grid_viewport_tree(root->gege);
 
@@ -869,8 +879,8 @@ static int grid_dash_pattern1_len = 2;
  * Apply the graphical parameters, fall back to defaults where applicable.
  */
 static void
-grid_apply_line_parameters(grid_context_t *gr, 
-                           grid_par_t *par, grid_par_t *default_par) 
+grid_apply_line_parameters(grid_context_t *gr, const grid_par_t *par, 
+                           grid_par_t *default_par) 
 {
     cairo_t *cr = gr->cr;
     rgba_t *color;
@@ -908,8 +918,8 @@ grid_apply_line_parameters(grid_context_t *gr,
  * Draw a line connecting two points.
  */
 void
-grid_line(grid_context_t *gr, unit_t *x1, unit_t *y1, unit_t *x2, unit_t *y2,
-          grid_par_t *par)
+grid_line(grid_context_t *gr, const unit_t *x1, const unit_t *y1, 
+          const unit_t *x2, const unit_t *y2, const grid_par_t *par)
 {
     cairo_t *cr = gr->cr;
     double x1_npc = unit_to_npc(gr, 'x', x1);
@@ -926,7 +936,9 @@ grid_line(grid_context_t *gr, unit_t *x1, unit_t *y1, unit_t *x2, unit_t *y2,
 }
 
 void
-grid_lines(grid_context_t  *gr, unit_array_t *xs, unit_array_t *ys, grid_par_t *par) {
+grid_lines(grid_context_t  *gr, const unit_array_t *xs, const unit_array_t *ys, 
+           const grid_par_t *par) 
+{
     cairo_t *cr = gr->cr;
     
     int x_size = unit_array_size(xs);
@@ -964,8 +976,8 @@ grid_lines(grid_context_t  *gr, unit_array_t *xs, unit_array_t *ys, grid_par_t *
  * Draw a rectangle with lower-left corner at `(x, y)`.
  */
 void
-grid_rect(grid_context_t *gr, unit_t *x, unit_t *y, 
-          unit_t *width, unit_t *height, grid_par_t *par) 
+grid_rect(grid_context_t *gr, const unit_t *x, const unit_t *y, 
+          const unit_t *width, const unit_t *height, const grid_par_t *par) 
 {
     cairo_t *cr = gr->cr;
     double x_npc = unit_to_npc(gr, 'x', x);
@@ -996,7 +1008,7 @@ grid_rect(grid_context_t *gr, unit_t *x, unit_t *y,
  *                   unit(1, "npc"), unit(1, "npc"), par);
  */
 void
-grid_full_rect(grid_context_t *gr, grid_par_t *par) {
+grid_full_rect(grid_context_t *gr, const grid_par_t *par) {
     unit_t zero = Unit(0, "npc");
     unit_t one = Unit(1, "npc");
     grid_rect(gr, &zero, &zero, &one, &one, par);
@@ -1064,8 +1076,8 @@ grid_vjust_to_y(char *vjust) {
  * \param par Graphical parameters to apply to this drawing command.
  */
 void
-grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
-          grid_par_t *par) 
+grid_text(grid_context_t *gr, const char *text, 
+          const unit_t *x, const unit_t *y, const grid_par_t *par) 
 {
 
     // set the font size first so that subsequent distance calculations are
@@ -1124,7 +1136,7 @@ grid_text(grid_context_t *gr, const char *text, unit_t *x, unit_t *y,
 }
 
 void
-grid_xaxis(grid_context_t *gr, const unit_array_t *at, grid_par_t *par) {
+grid_xaxis(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
     grid_apply_line_parameters(gr, par, gr->par);
 
     unit_t th = Unit(0.5, "lines");
