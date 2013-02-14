@@ -2,7 +2,6 @@ griddle
 =======
 
 `griddle` aims to be a C implementation using [cairo](http://cairographics.org/) of a subset of the [grid graphics](http://www.stat.auckland.ac.nz/~paul/grid/grid.html) package for R. I'm copying grid so shamelessly that the documentation for that package provides a good introduction to `griddle`. As I write this, there is still a lot of work to do, but enough bits are implemented that I can give you an idea of what I'm going for. The following code is taken from [examples/sine.c](https://github.com/jotok/griddle/blob/master/examples/sine.c).
-    cairo_surface_write_to_png(gr->surface, "sine.png");
 
     grid_context_t *gr = new_grid_context(800, 600);
 
