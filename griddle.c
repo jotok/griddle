@@ -101,6 +101,9 @@ unit_to_npc(grid_context_t *gr, char dim, const unit_t *u) {
     return result;
 }
 
+/**
+ * NOTE: this function assumes device coordinates are pixels.
+ */
 static void
 unit_array_to_npc_helper(double *result, double dev_per_npc, 
                          double dev_per_line, double dev_per_em, 
@@ -429,8 +432,8 @@ new_grid_viewport_node(void) {
     grid_viewport_node_t *node = malloc(sizeof(grid_viewport_node_t));
     node->parent = node->gege = node->didi = node->child = NULL;
     node->name = NULL;
-    node->npc_to_ntv = malloc(sizeof(cairo_matrix_t));
     node->npc_to_dev = malloc(sizeof(cairo_matrix_t));
+    node->npc_to_ntv = malloc(sizeof(cairo_matrix_t));
     node->par = NULL;
 
     cairo_matrix_init_identity(node->npc_to_ntv);
@@ -472,8 +475,9 @@ grid_push_named_viewport(grid_context_t *gr,
 
     if (status == CAIRO_STATUS_SUCCESS) {
         grid_viewport_node_t *node = new_grid_viewport_node();
-        cairo_matrix_multiply(node->npc_to_ntv, &vp_mtx, gr->current_node->npc_to_ntv);
         cairo_matrix_multiply(node->npc_to_dev, &vp_mtx, gr->current_node->npc_to_dev);
+        cairo_matrix_init(node->npc_to_ntv, vp->w_ntv, 0, 0, vp->h_ntv, 
+                                            vp->x_ntv, vp->y_ntv);
 
         if (name) {
             node->name = malloc(strlen(name) + 1);
