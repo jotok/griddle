@@ -1079,28 +1079,33 @@ grid_text(grid_context_t *gr, const char *text,
     free(text_extents);
 }
 
-//// /**
-////  * Draw tick marks along the x-axis at the specified values.
-////  *
-////  * \todo Labeled ticks.
-////  */
-//// void
-//// grid_xaxis(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
-////     grid_apply_line_parameters(gr, par, gr->par);
-//// 
-////     unit_t th = Unit(0.5, "lines");
-////     double tick_height = unit_to_npc(gr, 'y', &th);
-//// 
-////     int i;
-////     double npc;
-////     unit_t u;
-////     for (i = 0; i < at->size; i++) {
-////         u = Unit(at->values[i], at->type);
-////         npc = unit_to_npc(gr, 'x', &u);
-//// 
-////         cairo_new_path(gr->cr);
-////         cairo_move_to(gr->cr, npc, 1);
-////         cairo_line_to(gr->cr, npc, 1 + tick_height);
-////         cairo_stroke(gr->cr);
-////     }
-//// }
+/**
+ * Draw tick marks along the x-axis at the specified values.
+ *
+ * \todo Labeled ticks.
+ */
+void
+grid_xaxis(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
+    grid_apply_line_parameters(gr, par, gr->par);
+
+    unit_t th = Unit(0.5, "lines");
+    double tick_height = unit_to_npc(gr, 'y', &th);
+
+    int i;
+    unit_t u;
+    double x1_npc, y1_npc, x2_npc, y2_npc;
+    for (i = 0; i < at->size; i++) {
+        u = Unit(at->values[i], at->type);
+        x1_npc = unit_to_npc(gr, 'x', &u);
+        y1_npc = 0;
+        x2_npc = x1_npc;
+        y2_npc = -tick_height;
+        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x1_npc, &y1_npc);
+        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x2_npc, &y2_npc);
+
+        cairo_new_path(gr->cr);
+        cairo_move_to(gr->cr, x1_npc, y1_npc);
+        cairo_line_to(gr->cr, x2_npc, y2_npc);
+        cairo_stroke(gr->cr);
+    }
+}
