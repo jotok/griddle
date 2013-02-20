@@ -57,46 +57,45 @@ void
 test_grid_viewport_tree(CuTest *tc) {
     grid_context_t *gr = new_grid_context(100, 100);
 
-    grid_viewport_t *apple = new_grid_named_default_viewport("apple");
-    grid_push_viewport(gr, apple);
+    grid_viewport_t *apple = new_grid_default_viewport();
+    grid_push_named_viewport(gr, "apple", apple);
 
     CuAssertTrue(tc, gr->root_node != gr->current_node);
-    CuAssertPtrEquals(tc, gr->current_node->vp, apple);
+    CuAssertStrEquals(tc, gr->current_node->name, "apple");
     CuAssertPtrEquals(tc, gr->root_node->child, gr->current_node);
     CuAssertPtrEquals(tc, gr->current_node->parent, gr->root_node);
 
-    grid_viewport_t *banana = new_grid_named_default_viewport("banana");
-    grid_viewport_t *carrot = new_grid_named_default_viewport("carrot");
-    grid_push_viewport(gr, banana);
+    grid_viewport_t *banana = new_grid_default_viewport();
+    grid_viewport_t *carrot = new_grid_default_viewport();
+    grid_push_named_viewport(gr, "banana", banana);
     grid_up_viewport_1(gr);
-    grid_push_viewport(gr, carrot);
+    grid_push_named_viewport(gr, "carrot", carrot);
 
-    CuAssertPtrEquals(tc, gr->current_node->vp, carrot);
-    CuAssertPtrEquals(tc, gr->current_node->gege->vp, banana);
-    CuAssertPtrEquals(tc, gr->current_node->gege->didi->vp, carrot);
-    CuAssertPtrEquals(tc, gr->current_node->parent->vp, apple);
+    CuAssertStrEquals(tc, "carrot", gr->current_node->name);
+    CuAssertStrEquals(tc, "banana", gr->current_node->gege->name);
+    CuAssertStrEquals(tc, "carrot", gr->current_node->gege->didi->name);
+    CuAssertStrEquals(tc, "apple", gr->current_node->parent->name);
 
-    grid_viewport_node_t *node = grid_pop_viewport_1(gr);
-    CuAssertPtrEquals(tc, node->vp, carrot);
-    CuAssertPtrEquals(tc, gr->current_node->vp, apple);
-    CuAssertPtrEquals(tc, gr->current_node->child->vp, banana);
-    CuAssertPtrEquals(tc, gr->current_node->child->didi, NULL);
-    free(node);
+    bool result = grid_pop_viewport_1(gr);
+    CuAssertTrue(tc, result);
+    CuAssertStrEquals(tc, "apple", gr->current_node->name);
+    CuAssertStrEquals(tc, "banana", gr->current_node->child->name);
+    CuAssertPtrEquals(tc, NULL, gr->current_node->child->didi);
 
     int n = grid_down_viewport(gr, "durian");
     CuAssertIntEquals(tc, -1, n);
-    CuAssertPtrEquals(tc, gr->current_node->vp, apple);
+    CuAssertStrEquals(tc, "apple", gr->current_node->name);
 
     n = grid_down_viewport(gr, "banana");
     CuAssertIntEquals(tc, 1, n);
-    CuAssertPtrEquals(tc, gr->current_node->vp, banana);
+    CuAssertStrEquals(tc, "banana", gr->current_node->name);
 
-    grid_push_viewport(gr, carrot);
+    grid_push_named_viewport(gr, "carrot", carrot);
     n = grid_down_viewport(gr, "banana");
     CuAssertIntEquals(tc, -1, n);
     n = grid_seek_viewport(gr, "banana");
     CuAssertIntEquals(tc, 2, n);
-    CuAssertPtrEquals(tc, gr->current_node->vp, banana);
+    CuAssertStrEquals(tc, "banana", gr->current_node->name);
 
     free_grid_context(gr);
 }

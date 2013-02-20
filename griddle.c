@@ -60,28 +60,35 @@ unit_to_npc_helper(double device_per_npc, double line_per_npc, double em_per_npc
  */
 static double
 unit_to_npc(grid_context_t *gr, char dim, const unit_t *u) {
-    cairo_t *cr = gr->cr;
-    double device_x_per_npc = 1.0;
-    double device_y_per_npc = 1.0;
-    cairo_user_to_device_distance(cr, &device_x_per_npc, &device_y_per_npc);
+    grid_viewport_node_t *node = gr->current_node;
+    double device_x_per_npc, device_y_per_npc;
+    device_x_per_npc = device_y_per_npc = 1.0;
+    cairo_matrix_transform_distance(node->npc_to_dev, &device_x_per_npc, 
+                                                      &device_y_per_npc);
+
+    double x_ntv, y_ntv, w_ntv, h_ntv;
+    x_ntv = y_ntv = 0.0;
+    w_ntv = h_ntv = 1.0;
+    cairo_matrix_transform_point(node->npc_to_ntv, &x_ntv, &y_ntv);
+    cairo_matrix_transform_distance(node->npc_to_ntv, &w_ntv, &h_ntv);
 
     cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
-    cairo_font_extents(cr, font_extents);
+    cairo_font_extents(gr->cr, font_extents);
 
     cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
-    cairo_text_extents(cr, "m", em_extents);
+    cairo_text_extents(gr->cr, "m", em_extents);
 
     double device_per_npc, o_ntv, size_ntv;  
     device_per_npc = o_ntv = size_ntv = 0.0;
 
     if (dim == 'x') {
         device_per_npc = device_x_per_npc;
-        o_ntv = gr->current_node->vp->x_ntv;
-        size_ntv = gr->current_node->vp->width_ntv;
+        o_ntv = x_ntv;
+        size_ntv = w_ntv;
     } else if (dim == 'y') {
         device_per_npc = device_y_per_npc;
-        o_ntv = gr->current_node->vp->y_ntv;
-        size_ntv = gr->current_node->vp->height_ntv;
+        o_ntv = y_ntv;
+        size_ntv = h_ntv;
     } else {
         fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
     }
@@ -176,9 +183,17 @@ static void
 unit_array_to_npc(double *result, grid_context_t *gr, char dim, 
                   const unit_array_t *u) 
 {
-    double device_x_per_npc = 1.0;
-    double device_y_per_npc = 1.0;
-    cairo_user_to_device_distance(gr->cr, &device_x_per_npc, &device_y_per_npc);
+    grid_viewport_node_t *node = gr->current_node;
+    double device_x_per_npc, device_y_per_npc;
+    device_x_per_npc = device_y_per_npc = 1.0;
+    cairo_matrix_transform_distance(node->npc_to_dev, &device_x_per_npc, 
+                                                      &device_y_per_npc);
+
+    double x_ntv, y_ntv, w_ntv, h_ntv;
+    x_ntv = y_ntv = 0.0;
+    w_ntv = h_ntv = 1.0;
+    cairo_matrix_transform_point(node->npc_to_ntv, &x_ntv, &y_ntv);
+    cairo_matrix_transform_distance(node->npc_to_ntv, &w_ntv, &h_ntv);
 
     cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
     cairo_font_extents(gr->cr, font_extents);
@@ -191,12 +206,12 @@ unit_array_to_npc(double *result, grid_context_t *gr, char dim,
 
     if (dim == 'x') {
         device_per_npc = device_x_per_npc;
-        o_ntv = gr->current_node->vp->x_ntv;
-        size_ntv = gr->current_node->vp->width_ntv;
+        o_ntv = x_ntv;
+        size_ntv = w_ntv;
     } else if (dim == 'y') {
         device_per_npc = device_y_per_npc;
-        o_ntv = gr->current_node->vp->y_ntv;
-        size_ntv = gr->current_node->vp->height_ntv;
+        o_ntv = y_ntv;
+        size_ntv = h_ntv;
     } else {
         fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
     }
@@ -305,12 +320,11 @@ new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height) {
     grid_viewport_t *vp = malloc(sizeof(grid_viewport_t));
     vp->x = x;
     vp->y = y;
-    vp->width = width;
-    vp->height = height;
-    vp->name = NULL;
+    vp->w = width;
+    vp->h = height;
 
     vp->x_ntv = vp->y_ntv = 0; 
-    vp->width_ntv = vp->height_ntv = 1;
+    vp->w_ntv = vp->h_ntv = 1;
 
     return vp;
 }
@@ -325,36 +339,6 @@ grid_viewport_t*
 new_grid_default_viewport() {
     return new_grid_viewport(unit(0, "npc"), unit(0, "npc"), 
                              unit(1, "npc"), unit(1, "npc"));
-}
-
-/**
- * Allocate a new \ref grid_viewport_t with the given name. 
- *
- * \return A pointer to the newly allocated \ref grid_viewport_t.
- * \see new_grid_viewport
- */
-grid_viewport_t*
-new_grid_named_viewport(const char *name, unit_t *x, unit_t *y, 
-                        unit_t *width, unit_t *height) 
-{
-    grid_viewport_t *vp = new_grid_viewport(x, y, width, height);
-    vp->name = malloc(strlen(name) + 1);
-    strcpy(vp->name, name);
-    return vp;
-}
-
-/**
- * Allocate a new \ref grid_viewport_t with the given name and default values.
- *
- * \return A pointer to the newly allocated \ref grid_viewport_t.
- * \see new_grid_named_viewport
- */
-grid_viewport_t*
-new_grid_named_default_viewport(const char *name) {
-    grid_viewport_t *vp = new_grid_default_viewport();
-    vp->name = malloc(strlen(name) + 1);
-    strcpy(vp->name, name);
-    return vp;
 }
 
 /**
@@ -379,7 +363,7 @@ new_grid_data_viewport(int data_size, const double *xs, const double *ys) {
 
         pad = 0.1 * (max - min) / 1.8;
         vp->x_ntv = min - pad;
-        vp->width_ntv = max - min + 2 * pad;
+        vp->w_ntv = max - min + 2 * pad;
 
         min = max = ys[0];
         for (i = 1; i < data_size; i++) {
@@ -391,7 +375,7 @@ new_grid_data_viewport(int data_size, const double *xs, const double *ys) {
 
         pad = 0.1 * (max - min) / 1.8;
         vp->y_ntv = min - pad;
-        vp->height_ntv = max - min + 2 * pad;
+        vp->h_ntv = max - min + 2 * pad;
     }
 
     return vp;
@@ -429,12 +413,11 @@ free_grid_viewport(grid_viewport_t *vp) {
         free_unit(vp->x);
     if (vp->y)
         free_unit(vp->y);
-    if (vp->width)
-        free_unit(vp->width);
-    if (vp->height)
-        free_unit(vp->height);
+    if (vp->w)
+        free_unit(vp->w);
+    if (vp->h)
+        free_unit(vp->h);
 
-    free(vp->par);
     free(vp);
 }
 
@@ -442,86 +425,97 @@ free_grid_viewport(grid_viewport_t *vp) {
  * Allocate a new \ref grid_viewport_node_t.
  */
 static grid_viewport_node_t*
-new_grid_viewport_node(grid_viewport_t *vp) {
+new_grid_viewport_node(void) {
     grid_viewport_node_t *node = malloc(sizeof(grid_viewport_node_t));
-    node->vp = vp;
     node->parent = node->gege = node->didi = node->child = NULL;
+    node->name = NULL;
+    node->npc_to_ntv = malloc(sizeof(cairo_matrix_t));
+    node->npc_to_dev = malloc(sizeof(cairo_matrix_t));
+    node->par = NULL;
+
+    cairo_matrix_init_identity(node->npc_to_ntv);
+    cairo_matrix_init_identity(node->npc_to_dev);
 
     return node;
 }
 
 /**
- * Apply the transform described by `vp` to the cairo context.
+ * Deallocate a \ref grid_viewport_node_t.
  */
 static void
-grid_apply_viewport_transform(grid_context_t *gr, grid_viewport_t *vp) {
-    cairo_save(gr->cr);
+free_grid_viewport_node(grid_viewport_node_t *node) {
+    if (node->npc_to_ntv)
+        free(node->npc_to_ntv);
+    if (node->npc_to_dev)
+        free(node->npc_to_dev);
+    if (node->name)
+        free(node->name);
+    if (node->par)
+        free(node->par);
 
-    double height_npc = unit_to_npc(gr, 'y', vp->height);
+    free(node);
+}
 
-    cairo_translate(gr->cr, unit_to_npc(gr, 'x', vp->x),
-                            1 - unit_to_npc(gr, 'y', vp->y) - height_npc);
-    cairo_scale(gr->cr, unit_to_npc(gr, 'x', vp->width), height_npc);
+void
+grid_push_named_viewport(grid_context_t *gr, 
+                         const char *name, const grid_viewport_t *vp)
+{
+    double x = unit_to_npc(gr, 'x', vp->x);
+    double y = unit_to_npc(gr, 'y', vp->y);
+    double w = unit_to_npc(gr, 'x', vp->w);
+    double h = unit_to_npc(gr, 'y', vp->h);
+
+    cairo_matrix_t vp_mtx, temp_mtx;
+    cairo_matrix_init(&vp_mtx, w, 0, 0, h, x, y);
+    cairo_matrix_init(&temp_mtx, w, 0, 0, h, x, y);
+    cairo_status_t status = cairo_matrix_invert(&temp_mtx);
+
+    if (status == CAIRO_STATUS_SUCCESS) {
+        grid_viewport_node_t *node = new_grid_viewport_node();
+        cairo_matrix_multiply(node->npc_to_ntv, &vp_mtx, gr->current_node->npc_to_ntv);
+        cairo_matrix_multiply(node->npc_to_dev, &vp_mtx, gr->current_node->npc_to_dev);
+
+        if (name) {
+            node->name = malloc(strlen(name) + 1);
+            strcpy(node->name, name);
+        }
+
+        if (gr->current_node->child) {
+            gr->current_node->child->didi = node;
+            node->gege = gr->current_node->child;
+        }
+
+        gr->current_node->child = node;
+        node->parent = gr->current_node;
+        gr->current_node = node;
+    } else {
+        fprintf(stderr, "Warning: can't create singular viewport\n");
+    }
 }
 
 /**
  * Push a viewport onto the tree. The viewport becomes a leaf of the current
  * viewport and becomes the new current viewport. This function acts
- * destructively on `vp->x`, `vp->y`, `vp->width`, and `vp->height`.
+ * destructively on `vp->x`, `vp->y`, `vp->w`, and `vp->h`.
  */
 void
-grid_push_viewport(grid_context_t *gr, grid_viewport_t *vp) {
-    // convert viewport units to npc so that distances based on graphics
-    // parameters (e.g., em, lines) reflect the current state.
-
-    unit_t *x = unit(unit_to_npc(gr, 'x', vp->x), "npc");
-    free_unit(vp->x);
-    vp->x = x;
-
-    unit_t *y = unit(unit_to_npc(gr, 'y', vp->y), "npc");
-    free_unit(vp->y);
-    vp->y = y;
-
-    unit_t *width = unit(unit_to_npc(gr, 'x', vp->width), "npc");
-    free_unit(vp->width);
-    vp->width = width;
-
-    unit_t *height = unit(unit_to_npc(gr, 'y', vp->height), "npc");
-    free_unit(vp->height);
-    vp->height = height;
-
-    grid_viewport_node_t *node = new_grid_viewport_node(vp);
-
-    if (gr->current_node->child) {
-        gr->current_node->child->didi = node;
-        node->gege = gr->current_node->child;
-    }
-
-    gr->current_node->child = node;
-    node->parent = gr->current_node;
-    gr->current_node = node;
-
-    grid_apply_viewport_transform(gr, vp);
+grid_push_viewport(grid_context_t *gr, const grid_viewport_t *vp) {
+    grid_push_named_viewport(gr, NULL, vp);
 }
 
 /**
- * Pop the current viewport node from the tree; its parent becomes the new
- * current viewport. The popped node is not deallocated since it may contain
- * viewports still in use in its tree structure.
+ * Pop and deallocate the current viewport node from the tree; its parent
+ * becomes the new current viewport.
  *
- * \return A pointer to the popped viewport.
+ * \return True if successful, false otherwise.
  */
-grid_viewport_node_t*
+bool
 grid_pop_viewport_1(grid_context_t *gr) {
-    grid_viewport_node_t *node = NULL;
-
     if (gr->current_node == gr->root_node) {
-        fprintf(stderr, "Warning: attempted to pop root viewport from the stack in %s:%d\n",
-                __FILE__, __LINE__);
+        fprintf(stderr, "Warning: attempted to pop root viewport from the stack.\n");
+        return false;
     } else {
-        cairo_restore(gr->cr);
-
-        node = gr->current_node;
+        grid_viewport_node_t *node = gr->current_node;
         gr->current_node = node->parent;
 
         if (node->gege) {
@@ -535,9 +529,10 @@ grid_pop_viewport_1(grid_context_t *gr) {
                 node->gege = NULL;
             }
         }
-    }
 
-    return node;
+        free_grid_viewport_node(node);
+        return true;
+    }
 }
 
 /**
@@ -547,23 +542,18 @@ grid_pop_viewport_1(grid_context_t *gr) {
  * root viewport. Popped viewports and the nodes that contain them are not
  * deallocated.
  *
- * \return A pointer to a node pointing to the last popped viewport.
+ * \return The number of viewport successfully popped.
  */
-grid_viewport_node_t*
+int
 grid_pop_viewport(grid_context_t *gr, int n) {
-    grid_viewport_node_t *node, *try_node;
-    node = try_node = NULL;
-
     int i;
     for (i = 0; i < n; i++) {
-        if ((try_node = grid_pop_viewport_1(gr)) != NULL)
-            node = try_node;
-        else
+        if (!grid_pop_viewport_1(gr))
             // grid_up_viewport_1 will print an error message
             break;
     }
 
-    return node;
+    return i;
 }
 
 /**
@@ -576,12 +566,10 @@ grid_pop_viewport(grid_context_t *gr, int n) {
 bool
 grid_up_viewport_1(grid_context_t *gr) {
     if (gr->current_node == gr->root_node) {
-        fprintf(stderr, "Warning: attempted to move up from root viewport in %s:%d\n",
-                __FILE__, __LINE__);
+        fprintf(stderr, "Warning: attempted to move up from root viewport\n");
         return false;
     }
 
-    cairo_restore(gr->cr);
     gr->current_node = gr->current_node->parent;
     return true;
 }
@@ -605,64 +593,6 @@ grid_up_viewport(grid_context_t *gr, int n) {
 }
 
 /**
- * A container for a linked list.
- */
-typedef struct {
-    grid_viewport_node_t *first, /**< Head of the list */
-                         *last;  /**< Last member of the list */
-} grid_viewport_list_t;
-
-/**
- * Allocate a new \ref grid_viewport_list_t.
- */
-static grid_viewport_list_t*
-new_grid_viewport_list(grid_viewport_t *vp) {
-    grid_viewport_node_t *node = new_grid_viewport_node(vp);
-    grid_viewport_list_t *list = malloc(sizeof(grid_viewport_list_t));
-    list->first = node;
-    list->last = node;
-
-    return list;
-}
-
-/**
- * Deallocate a \ref grid_viewport_list_t. This frees the nodes but the the
- * referenced viewports.
- */
-static void
-free_grid_viewport_list(grid_viewport_list_t *list) {
-    grid_viewport_node_t *node, *next_node;
-    node = list->first;
-
-    while (node != list->last) {
-        next_node = node->child;
-        free(node);
-        node = next_node;
-    }
-
-    free(list);
-}
-
-/**
- * Append a viewport to the end of the list.
- */
-static void
-grid_viewport_list_append(grid_viewport_list_t *list, grid_viewport_t *vp) {
-    grid_viewport_node_t *node = new_grid_viewport_node(vp);
-    list->last->child = node;
-    list->last = node;
-}
-
-/**
- * Append all the nodes in `list2` to `list1`.
- */
-static void
-grid_viewport_list_concat(grid_viewport_list_t *list1, grid_viewport_list_t *list2) {
-    list1->last->child = list2->first;
-   list1->last = list2->last;
-}
-
-/**
  * Perform a depth first search for a viewport with the given name. `*plevel`
  * is incremented each time the algorithm recurses on a child viewport and is
  * set to -1 if no matching viewport is found. `path` is a list of nodes
@@ -670,31 +600,24 @@ grid_viewport_list_concat(grid_viewport_list_t *list1, grid_viewport_list_t *lis
  * `*path` is undefined and `*plevel` is set to -1.
  */
 static grid_viewport_node_t*
-grid_viewport_dfs(grid_viewport_node_t *this, const char *name, 
-                  int *plevel, grid_viewport_list_t *path) 
+grid_viewport_dfs(grid_viewport_node_t *this, const char *name, int *plevel) 
 {
-    if (this->vp->name && strcmp(this->vp->name, name) == 0) {
-        grid_viewport_list_append(path, this->vp);
+    if (this->name && strcmp(this->name, name) == 0) {
         return this;
     }
     
     grid_viewport_node_t *node;
     grid_viewport_node_t *this_child = this->child;
     int temp_level;
-    grid_viewport_list_t *temp_path;
 
     while (this_child != NULL) {
         temp_level = *plevel + 1;
-        temp_path = new_grid_viewport_list(this->vp);
-        node = grid_viewport_dfs(this_child, name, &temp_level, temp_path);
+        node = grid_viewport_dfs(this_child, name, &temp_level);
 
         if (node) {
             *plevel = temp_level;
-            grid_viewport_list_concat(path, temp_path);
-            free(temp_path); // but don't free the nodes within
             return node;
         } else {
-            free_grid_viewport_list(temp_path);
             this_child = this_child->gege;
         }
     }
@@ -713,23 +636,13 @@ grid_viewport_dfs(grid_viewport_node_t *this, const char *name,
 int
 grid_down_viewport(grid_context_t *gr, const char *name) {
     int n = 0;
-    grid_viewport_list_t *path = new_grid_viewport_list(gr->current_node->vp);
-    grid_viewport_node_t *node = grid_viewport_dfs(gr->current_node, name, &n, path);
+    grid_viewport_node_t *node = grid_viewport_dfs(gr->current_node, name, &n);
 
-    if (node) {
-        grid_viewport_node_t *this = path->first->child;
-        while (this) {
-            grid_apply_viewport_transform(gr, this->vp);
-            this = this->child;
-        }
-
+    if (node)
         gr->current_node = node;
-    } else {
-        fprintf(stderr, "Warning: didn't find viewport with name '%s' (%s:%d)\n",
-                name, __FILE__, __LINE__);
-    }
+    else
+        fprintf(stderr, "Warning: didn't find viewport with name '%s'\n", name);
 
-    free_grid_viewport_list(path);
     return n;
 }
 
@@ -742,27 +655,13 @@ grid_down_viewport(grid_context_t *gr, const char *name) {
 int
 grid_seek_viewport(grid_context_t *gr, const char *name) {
     int level = 0;
-    grid_viewport_list_t *path = new_grid_viewport_list(gr->current_node->vp);
-    grid_viewport_node_t *node = grid_viewport_dfs(gr->root_node, name, &level, path);
+    grid_viewport_node_t *node = grid_viewport_dfs(gr->root_node, name, &level);
 
-    if (node) {
-        int i;
-        for (i = 0; i < level; i++)
-            cairo_restore(gr->cr);
-
-        grid_viewport_node_t *this = path->first->child;
-        while (this) {
-            grid_apply_viewport_transform(gr, this->vp);
-            this = this->child;
-        }
-
+    if (node)
         gr->current_node = node;
-    } else {
-        fprintf(stderr, "Warning: didn't find viewport with name '%s' (%s:%d)\n",
-                name, __FILE__, __LINE__);
-    }
+    else
+        fprintf(stderr, "Warning: didn't find viewport with name '%s'\n", name);
 
-    free_grid_viewport_list(path);
     return level;
 }
 
@@ -772,9 +671,10 @@ grid_seek_viewport(grid_context_t *gr, const char *name) {
 
 static void
 grid_apply_font_size(grid_context_t *gr, const unit_t *font_size) {
-    cairo_matrix_t font_matrix = { .xx = unit_to_npc(gr, 'x', font_size), 
-                                   .yy = unit_to_npc(gr, 'y', font_size)};
-    cairo_set_font_matrix(gr->cr, &font_matrix);
+    double x_npc = unit_to_npc(gr, 'x', font_size);
+    double temp = 0;
+    cairo_matrix_transform_distance(gr->current_node->npc_to_dev, &x_npc, &temp);
+    cairo_set_font_size(gr->cr, x_npc);
 }
 
 /**
@@ -792,7 +692,10 @@ grid_set_font_size(grid_context_t *gr, unit_t *font_size) {
 
 static void
 grid_apply_line_width(grid_context_t *gr, unit_t *lwd) {
-    cairo_set_line_width(gr->cr, unit_to_npc(gr, 'x', lwd));
+    double lwd_npc = unit_to_npc(gr, 'x', lwd);
+    double temp = 0;
+    cairo_matrix_transform_distance(gr->current_node->npc_to_dev, &lwd_npc, &temp);
+    cairo_set_line_width(gr->cr, lwd_npc);
 }
 
 
@@ -823,16 +726,16 @@ new_grid_context(int width_px, int height_px) {
     gr->surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width_px, height_px);
     gr->cr = cairo_create(gr->surface);
 
-    // Scale so that user coordinates are NPC
-    cairo_scale(gr->cr, width_px, height_px);
+    // put the origin at the lower left instead of the upper left
+    cairo_matrix_t m = { .xx = 1, .yy = -1, .y0 = height_px };
+    cairo_set_matrix(gr->cr, &m);
 
-    grid_viewport_t *root = new_grid_named_default_viewport("root");
-    root->x_ntv = root->y_ntv = 0;
-    root->width_ntv = width_px;
-    root->height_ntv = height_px;
-    root->has_ntv = true;
-    gr->root_node = new_grid_viewport_node(root);
-    gr->current_node = gr->root_node;
+    grid_viewport_node_t *root = new_grid_viewport_node();
+    root->name = malloc(sizeof(char) * 5);
+    strcpy(root->name, "root");
+    cairo_matrix_scale(root->npc_to_ntv, width_px, height_px);
+    cairo_matrix_scale(root->npc_to_dev, width_px, height_px);
+    gr->current_node = gr->root_node = root;
 
     grid_par_t *par = new_grid_default_par();
     gr->par = par;
@@ -858,11 +761,11 @@ free_grid_viewport_tree(grid_viewport_node_t *root) {
     if (root->child)
         free_grid_viewport_tree(root->child);
 
-    free(root);
+    free_grid_viewport_node(root);
 }
 
 /**
- * Deallocate a \ref grid_context_t. Does not deallocate viewports.
+ * Deallocate a \ref grid_context_t.
  */
 void
 free_grid_context(grid_context_t *gr) {
@@ -927,9 +830,13 @@ grid_line(grid_context_t *gr, const unit_t *x1, const unit_t *y1,
     double x2_npc = unit_to_npc(gr, 'x', x2);
     double y2_npc = unit_to_npc(gr, 'y', y2);
 
+    cairo_matrix_t *m = gr->current_node->npc_to_dev;
+    cairo_matrix_transform_point(m, &x1_npc, &y1_npc);
+    cairo_matrix_transform_point(m, &x2_npc, &y2_npc);
+
     cairo_new_path(cr);
-    cairo_move_to(cr, x1_npc, 1 - y1_npc);
-    cairo_line_to(cr, x2_npc, 1 - y2_npc);
+    cairo_move_to(cr, x1_npc, y1_npc);
+    cairo_line_to(cr, x2_npc, y2_npc);
 
     grid_apply_line_parameters(gr, par, gr->par);
     cairo_stroke(cr);
@@ -958,12 +865,16 @@ grid_lines(grid_context_t  *gr, const unit_array_t *xs, const unit_array_t *ys,
     unit_array_to_npc(xs_npc, gr, 'x', xs);
     unit_array_to_npc(ys_npc, gr, 'y', ys);
 
+    cairo_matrix_t *m = gr->current_node->npc_to_dev;
+    cairo_matrix_transform_point(m, xs_npc, ys_npc);
     cairo_new_path(cr);
-    cairo_move_to(cr, xs_npc[0], 1 - ys_npc[0]);
+    cairo_move_to(cr, xs_npc[0], ys_npc[0]);
 
     int i;
-    for (i = 1; i < x_size; i++)
-        cairo_line_to(cr, xs_npc[i], 1 - ys_npc[i]);
+    for (i = 1; i < x_size; i++) {
+        cairo_matrix_transform_point(m, xs_npc + i, ys_npc + i);
+        cairo_line_to(cr, xs_npc[i], ys_npc[i]);
+    }
 
     grid_apply_line_parameters(gr, par, gr->par);
     cairo_stroke(cr);
@@ -982,11 +893,15 @@ grid_rect(grid_context_t *gr, const unit_t *x, const unit_t *y,
     cairo_t *cr = gr->cr;
     double x_npc = unit_to_npc(gr, 'x', x);
     double y_npc = unit_to_npc(gr, 'y', y);
-    double width_npc = unit_to_npc(gr, 'x', width);
-    double height_npc = unit_to_npc(gr, 'y', height);
+    double w_npc = unit_to_npc(gr, 'x', width);
+    double h_npc = unit_to_npc(gr, 'y', height);
+
+    cairo_matrix_t *m = gr->current_node->npc_to_dev;
+    cairo_matrix_transform_point(m, &x_npc, &y_npc);
+    cairo_matrix_transform_distance(m, &w_npc, &h_npc);
 
     cairo_new_path(cr);
-    cairo_rectangle(cr, x_npc, 1 - y_npc - height_npc, width_npc, height_npc);
+    cairo_rectangle(cr, x_npc, y_npc, w_npc, h_npc);
 
     rgba_t *fill;
     if ((par && (fill = par->fill)) || (fill = gr->par->fill)) {
@@ -1097,10 +1012,12 @@ grid_text(grid_context_t *gr, const char *text,
     unit_t *my_x = NULL; 
 
     if (!x) {
+        double width_npc = text_extents->width / gr->current_node->npc_to_dev->xx;
+
         if (par && par->just) 
-            my_x = grid_just_to_x(par->just, text_extents->width);
+            my_x = grid_just_to_x(par->just, width_npc);
         else
-            my_x = grid_just_to_x(gr->par->just, text_extents->width);
+            my_x = grid_just_to_x(gr->par->just, width_npc);
 
         x = my_x;
     }
@@ -1122,11 +1039,27 @@ grid_text(grid_context_t *gr, const char *text,
     else
         color = gr->par->color;
 
-    cairo_new_path(cr);
-    cairo_move_to(cr, unit_to_npc(gr, 'x', x), 1 - unit_to_npc(gr, 'y', y));
     cairo_set_source_rgba(cr, color->red, color->blue, 
                           color->green, color->alpha);
+    
+    double x_npc = unit_to_npc(gr, 'x', x);
+    double y_npc = unit_to_npc(gr, 'y', y);
+    cairo_matrix_t *npc_to_dev = gr->current_node->npc_to_dev;
+    cairo_matrix_transform_point(npc_to_dev, &x_npc, &y_npc);
+
+    // unless we temporarily flip the coordinate system, cairo will draw the
+    // text upside-down.
+
+    cairo_matrix_t m;
+    cairo_get_matrix(cr, &m);
+    cairo_matrix_t id = { .xx = 1, .yy = 1 };
+    cairo_set_matrix(cr, &id);
+
+    cairo_new_path(cr);
+    cairo_move_to(cr, x_npc, m.y0 - y_npc);
     cairo_show_text(cr, text);
+
+    cairo_set_matrix(cr, &m);
 
     if (my_x)
         free_unit(my_x);
@@ -1135,28 +1068,28 @@ grid_text(grid_context_t *gr, const char *text,
     free(text_extents);
 }
 
-/**
- * Draw tick marks along the x-axis at the specified values.
- *
- * \todo Labeled ticks.
- */
-void
-grid_xaxis(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
-    grid_apply_line_parameters(gr, par, gr->par);
-
-    unit_t th = Unit(0.5, "lines");
-    double tick_height = unit_to_npc(gr, 'y', &th);
-
-    int i;
-    double npc;
-    unit_t u;
-    for (i = 0; i < at->size; i++) {
-        u = Unit(at->values[i], at->type);
-        npc = unit_to_npc(gr, 'x', &u);
-
-        cairo_new_path(gr->cr);
-        cairo_move_to(gr->cr, npc, 1);
-        cairo_line_to(gr->cr, npc, 1 + tick_height);
-        cairo_stroke(gr->cr);
-    }
-}
+//// /**
+////  * Draw tick marks along the x-axis at the specified values.
+////  *
+////  * \todo Labeled ticks.
+////  */
+//// void
+//// grid_xaxis(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
+////     grid_apply_line_parameters(gr, par, gr->par);
+//// 
+////     unit_t th = Unit(0.5, "lines");
+////     double tick_height = unit_to_npc(gr, 'y', &th);
+//// 
+////     int i;
+////     double npc;
+////     unit_t u;
+////     for (i = 0; i < at->size; i++) {
+////         u = Unit(at->values[i], at->type);
+////         npc = unit_to_npc(gr, 'x', &u);
+//// 
+////         cairo_new_path(gr->cr);
+////         cairo_move_to(gr->cr, npc, 1);
+////         cairo_line_to(gr->cr, npc, 1 + tick_height);
+////         cairo_stroke(gr->cr);
+////     }
+//// }

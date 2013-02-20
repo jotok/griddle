@@ -30,19 +30,15 @@ typedef struct {
  * buffer.
  */
 typedef struct {
-    unit_t *x, *y, *width, *height;
-    grid_par_t *par;
-    char *name;
+    unit_t *x, *y, *w, *h;
 
-    bool has_ntv;
-    double x_ntv, y_ntv, width_ntv, height_ntv;
+    double x_ntv, y_ntv, w_ntv, h_ntv;
 } grid_viewport_t;
 
 /**
- * Nodes wrap viewports to keep track of the viewport tree structure.
+ * Nodes are viewports that have been captured in the viewport tree.
  */
 typedef struct __grid_viewport_node_t {
-    grid_viewport_t *vp;
     struct __grid_viewport_node_t *parent, 
                                   *gege,   /**< Older sibling ('gege' is a 
                                                 romanization of the Chinese word 
@@ -51,6 +47,10 @@ typedef struct __grid_viewport_node_t {
                                                 romanization of the Chinese word
                                                 for younger brother). */
                                   *child;
+
+    char *name;
+    cairo_matrix_t *npc_to_ntv, *npc_to_dev;
+    grid_par_t *par;
 } grid_viewport_node_t;
 
 /**
@@ -114,15 +114,18 @@ grid_viewport_t*
 new_grid_plot_viewport(grid_context_t*, double, double, double, double);
 
 void
+grid_push_named_viewport(grid_context_t*, const char*, const grid_viewport_t*);
+
+void
 free_grid_viewport(grid_viewport_t*);
 
 void
-grid_push_viewport(grid_context_t*, grid_viewport_t*);
+grid_push_viewport(grid_context_t*, const grid_viewport_t*);
 
-grid_viewport_node_t*
+bool
 grid_pop_viewport_1(grid_context_t*);
 
-grid_viewport_node_t*
+int
 grid_pop_viewport(grid_context_t*, int);
 
 bool
