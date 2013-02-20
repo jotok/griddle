@@ -16,37 +16,37 @@
  * NOTE: this function assumes device coordinates are pixels.
  */
 static double
-unit_to_npc_helper(double device_per_npc, double line_per_npc, double em_per_npc,
+unit_to_npc_helper(double px_per_npc, double px_per_line, double px_per_em,
                    double o_ntv, double size_ntv, const unit_t *u)
 {
     if (strcmp(u->type, "+") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+        double x = unit_to_npc_helper(px_per_npc, px_per_line, px_per_em, 
                                       o_ntv, size_ntv, u->arg1);
-        double y = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+        double y = unit_to_npc_helper(px_per_npc, px_per_line, px_per_em, 
                                       o_ntv, size_ntv, u->arg2);
         return x + y;
     } else if (strcmp(u->type, "-") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+        double x = unit_to_npc_helper(px_per_npc, px_per_line, px_per_em, 
                                       o_ntv, size_ntv, u->arg1);
-        double y = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+        double y = unit_to_npc_helper(px_per_npc, px_per_line, px_per_em, 
                                       o_ntv, size_ntv, u->arg2);
         return x - y;
     } else if (strcmp(u->type, "*") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+        double x = unit_to_npc_helper(px_per_npc, px_per_line, px_per_em, 
                                       o_ntv, size_ntv, u->arg1);
         return x * u->value;
     } else if (strcmp(u->type, "/") == 0) {
-        double x = unit_to_npc_helper(device_per_npc, line_per_npc, em_per_npc, 
+        double x = unit_to_npc_helper(px_per_npc, px_per_line, px_per_em, 
                                       o_ntv, size_ntv, u->arg1);
         return x / u->value;
     } else if (strcmp(u->type, "npc") == 0) {
         return u->value;
     } else if (strcmp(u->type, "px") == 0) {
-        return u->value / device_per_npc;
+        return u->value / px_per_npc;
     } else if (strncmp(u->type, "line", 4) == 0) {
-        return u->value * line_per_npc;
+        return u->value * px_per_line / px_per_npc;
     } else if (strcmp(u->type, "em") == 0) {
-        return u->value * em_per_npc;
+        return u->value * px_per_em / px_per_npc;
     } else if (strcmp(u->type, "native") == 0) {
         return (u->value - o_ntv) / size_ntv;
     } else {
@@ -61,10 +61,10 @@ unit_to_npc_helper(double device_per_npc, double line_per_npc, double em_per_npc
 static double
 unit_to_npc(grid_context_t *gr, char dim, const unit_t *u) {
     grid_viewport_node_t *node = gr->current_node;
-    double device_x_per_npc, device_y_per_npc;
-    device_x_per_npc = device_y_per_npc = 1.0;
-    cairo_matrix_transform_distance(node->npc_to_dev, &device_x_per_npc, 
-                                                      &device_y_per_npc);
+    double px_x_per_npc, px_y_per_npc;
+    px_x_per_npc = px_y_per_npc = 1.0;
+    cairo_matrix_transform_distance(node->npc_to_dev, &px_x_per_npc, 
+                                                      &px_y_per_npc);
 
     double x_ntv, y_ntv, w_ntv, h_ntv;
     x_ntv = y_ntv = 0.0;
@@ -78,22 +78,22 @@ unit_to_npc(grid_context_t *gr, char dim, const unit_t *u) {
     cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
     cairo_text_extents(gr->cr, "m", em_extents);
 
-    double device_per_npc, o_ntv, size_ntv;  
-    device_per_npc = o_ntv = size_ntv = 0.0;
+    double px_per_npc, o_ntv, size_ntv;  
+    px_per_npc = o_ntv = size_ntv = 0.0;
 
     if (dim == 'x') {
-        device_per_npc = device_x_per_npc;
+        px_per_npc = px_x_per_npc;
         o_ntv = x_ntv;
         size_ntv = w_ntv;
     } else if (dim == 'y') {
-        device_per_npc = device_y_per_npc;
+        px_per_npc = px_y_per_npc;
         o_ntv = y_ntv;
         size_ntv = h_ntv;
     } else {
         fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
     }
 
-    double result = unit_to_npc_helper(device_per_npc, font_extents->height,
+    double result = unit_to_npc_helper(px_per_npc, font_extents->height,
                                        em_extents->width, o_ntv, size_ntv, u);
 
     free(font_extents);
@@ -102,8 +102,8 @@ unit_to_npc(grid_context_t *gr, char dim, const unit_t *u) {
 }
 
 static void
-unit_array_to_npc_helper(double *result, double device_per_npc, 
-                         double line_per_npc, double em_per_npc, 
+unit_array_to_npc_helper(double *result, double px_per_npc, 
+                         double px_per_line, double px_per_em, 
                          double o_ntv, double size_ntv,
                          int size, const unit_array_t *u) 
 {
@@ -113,9 +113,9 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
     if (strcmp(u->type, "+") == 0) {
         xs = malloc(size * sizeof(double));
         ys = malloc(size * sizeof(double));
-        unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
+        unit_array_to_npc_helper(xs, px_per_npc, px_per_line, px_per_em, 
                                  o_ntv, size_ntv, size, u->arg1);
-        unit_array_to_npc_helper(ys, device_per_npc, line_per_npc, em_per_npc, 
+        unit_array_to_npc_helper(ys, px_per_npc, px_per_line, px_per_em, 
                                  o_ntv, size_ntv, size, u->arg1);
 
         for (i = 0; i < size; i++)
@@ -126,9 +126,9 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
     } else if (strcmp(u->type, "-") == 0) {
         xs = malloc(size * sizeof(double));
         ys = malloc(size * sizeof(double));
-        unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
+        unit_array_to_npc_helper(xs, px_per_npc, px_per_line, px_per_em, 
                                  o_ntv, size_ntv, size, u->arg1);
-        unit_array_to_npc_helper(ys, device_per_npc, line_per_npc, em_per_npc, 
+        unit_array_to_npc_helper(ys, px_per_npc, px_per_line, px_per_em, 
                                  o_ntv, size_ntv, size, u->arg1);
 
         for (i = 0; i < size; i++)
@@ -138,7 +138,7 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
         free(ys);
     } else if (strcmp(u->type, "*") == 0) {
         xs = malloc(size * sizeof(double));
-        unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
+        unit_array_to_npc_helper(xs, px_per_npc, px_per_line, px_per_em, 
                                  o_ntv, size_ntv, size, u->arg1);
 
         for (i = 0; i < size; i++)
@@ -147,7 +147,7 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
         free(xs);
     } else if (strcmp(u->type, "/") == 0) {
         xs = malloc(size * sizeof(double));
-        unit_array_to_npc_helper(xs, device_per_npc, line_per_npc, em_per_npc, 
+        unit_array_to_npc_helper(xs, px_per_npc, px_per_line, px_per_em, 
                                  o_ntv, size_ntv, size, u->arg1);
 
         for (i = 0; i < size; i++)
@@ -159,13 +159,13 @@ unit_array_to_npc_helper(double *result, double device_per_npc,
             result[i] = u->values[i];
     } else if (strcmp(u->type, "px") == 0) {
         for (i = 0; i < size; i++)
-            result[i] = u->values[i] / device_per_npc;
+            result[i] = u->values[i] / px_per_npc;
     } else if (strncmp(u->type, "line", 4) == 0) {
         for (i = 0; i < size; i++)
-            result[i] = u->values[i] / line_per_npc;
+            result[i] = u->values[i] * px_per_line / px_per_npc;
     } else if (strcmp(u->type, "em") == 0) {
         for (i = 0; i < size; i++)
-            result[i] = u->values[i] * em_per_npc;
+            result[i] = u->values[i] * px_per_em / px_per_npc;
     } else if (strcmp(u->type, "native") == 0) {
         for (i = 0; i < size; i++)
             result[i] = (u->values[i] - o_ntv) / size_ntv;
@@ -184,10 +184,10 @@ unit_array_to_npc(double *result, grid_context_t *gr, char dim,
                   const unit_array_t *u) 
 {
     grid_viewport_node_t *node = gr->current_node;
-    double device_x_per_npc, device_y_per_npc;
-    device_x_per_npc = device_y_per_npc = 1.0;
-    cairo_matrix_transform_distance(node->npc_to_dev, &device_x_per_npc, 
-                                                      &device_y_per_npc);
+    double x_px_per_npc, y_px_per_npc;
+    x_px_per_npc = y_px_per_npc = 1.0;
+    cairo_matrix_transform_distance(node->npc_to_dev, &x_px_per_npc, 
+                                                      &y_px_per_npc);
 
     double x_ntv, y_ntv, w_ntv, h_ntv;
     x_ntv = y_ntv = 0.0;
@@ -201,22 +201,22 @@ unit_array_to_npc(double *result, grid_context_t *gr, char dim,
     cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
     cairo_text_extents(gr->cr, "m", em_extents);
 
-    double device_per_npc, o_ntv, size_ntv;
-    device_per_npc = o_ntv = size_ntv = 0.0;
+    double px_per_npc, o_ntv, size_ntv;
+    px_per_npc = o_ntv = size_ntv = 0.0;
 
     if (dim == 'x') {
-        device_per_npc = device_x_per_npc;
+        px_per_npc = x_px_per_npc;
         o_ntv = x_ntv;
         size_ntv = w_ntv;
     } else if (dim == 'y') {
-        device_per_npc = device_y_per_npc;
+        px_per_npc = y_px_per_npc;
         o_ntv = y_ntv;
         size_ntv = h_ntv;
     } else {
         fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
     }
 
-    unit_array_to_npc_helper(result, device_per_npc, font_extents->height,
+    unit_array_to_npc_helper(result, px_per_npc, font_extents->height,
                              em_extents->width, o_ntv, size_ntv, 
                              unit_array_size(u), u);
 
