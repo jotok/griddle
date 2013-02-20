@@ -32,6 +32,7 @@ typedef struct {
 typedef struct {
     unit_t *x, *y, *w, *h;
 
+    bool has_ntv;
     double x_ntv, y_ntv, w_ntv, h_ntv;
 } grid_viewport_t;
 

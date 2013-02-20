@@ -326,8 +326,7 @@ new_grid_viewport(unit_t *x, unit_t *y, unit_t *width, unit_t *height) {
     vp->w = width;
     vp->h = height;
 
-    vp->x_ntv = vp->y_ntv = 0; 
-    vp->w_ntv = vp->h_ntv = 1;
+    vp->has_ntv = false;
 
     return vp;
 }
@@ -351,6 +350,7 @@ new_grid_default_viewport() {
 grid_viewport_t*
 new_grid_data_viewport(int data_size, const double *xs, const double *ys) {
     grid_viewport_t *vp = new_grid_default_viewport();
+    vp->has_ntv = true;
 
     if (data_size > 0) {
         double min, max, pad;
@@ -476,8 +476,15 @@ grid_push_named_viewport(grid_context_t *gr,
     if (status == CAIRO_STATUS_SUCCESS) {
         grid_viewport_node_t *node = new_grid_viewport_node();
         cairo_matrix_multiply(node->npc_to_dev, &vp_mtx, gr->current_node->npc_to_dev);
-        cairo_matrix_init(node->npc_to_ntv, vp->w_ntv, 0, 0, vp->h_ntv, 
-                                            vp->x_ntv, vp->y_ntv);
+
+        if (vp->has_ntv) {
+            cairo_matrix_init(node->npc_to_ntv, vp->w_ntv, 0, 0, vp->h_ntv, 
+                                                vp->x_ntv, vp->y_ntv);
+        } else {
+            // inherit native coordinates from parent
+            cairo_matrix_multiply(node->npc_to_ntv, 
+                                  &vp_mtx, gr->current_node->npc_to_ntv);
+        }
 
         if (name) {
             node->name = malloc(strlen(name) + 1);
