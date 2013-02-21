@@ -32,7 +32,7 @@ main(void) {
     // need to restore default font size so that "line" units match what we did
     // above. TODO: parameters set explitly during a drawing function should
     // revert at the end of the function.
-    grid_set_font_size(gr, gr->par->font_size);
+    // grid_set_font_size(gr, gr->par->font_size);
     grid_push_viewport(gr, new_grid_plot_viewport(gr, 4.1, 1.1, 3.1, 3.1));
     grid_push_viewport(gr, new_grid_data_viewport(100, x, y));
 
@@ -41,7 +41,7 @@ main(void) {
 
     unit_array_t x_units = UnitArray(100, x, "native");
     unit_array_t y_units = UnitArray(100, y, "native");
-    grid_set_line_width(gr, unit(5, "px"));
+    grid_set_lwd(gr, unit(5, "px"));
     par = (grid_par_t){.color = &blue};
     grid_lines(gr, &x_units, &y_units, &par);
 

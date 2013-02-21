@@ -143,11 +143,26 @@ grid_seek_viewport(grid_context_t*, const char*);
 
 // draw functions
 
-unit_t*
-grid_set_font_size(grid_context_t*, unit_t*);
+rgba_t*
+grid_set_color(grid_context_t*, rgba_t*);
+
+rgba_t*
+grid_set_fill(grid_context_t*, rgba_t*);
+
+char*
+grid_set_lty(grid_context_t*, char*);
+
+char*
+grid_set_just(grid_context_t*, char*);
+
+char*
+grid_set_vjust(grid_context_t*, char*);
 
 unit_t*
-grid_set_line_width(grid_context_t*, unit_t*);
+grid_set_lwd(grid_context_t*, unit_t*);
+
+unit_t*
+grid_set_font_size(grid_context_t*, unit_t*);
 
 grid_context_t*
 new_grid_context(int, int);

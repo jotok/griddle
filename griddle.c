@@ -681,6 +681,111 @@ grid_seek_viewport(grid_context_t *gr, const char *name) {
 //
 
 static void
+grid_apply_color(grid_context_t *gr, const rgba_t *color) {
+    cairo_set_source_rgba(gr->cr, color->red, color->green, color->blue, color->alpha);
+}
+
+/**
+ * Set the global (foreground) color.
+ *
+ * \return The old color.
+ */
+rgba_t*
+grid_set_color(grid_context_t *gr, rgba_t *color) {
+    rgba_t *old = gr->par->color;
+    gr->par->color = color;
+    grid_apply_color(gr, color);
+    return old;
+}
+
+/**
+ * Set the global fill color.
+ *
+ * \return The old color.
+ */
+rgba_t*
+grid_set_fill(grid_context_t *gr, rgba_t *fill) {
+    rgba_t *old = gr->par->color;
+    gr->par->fill = fill;
+    return old;
+}
+
+static double *grid_dash_pattern1_px = (double[]){10, 5};
+static int grid_dash_pattern1_len = 2;
+
+static void
+grid_apply_lty(grid_context_t *gr, const char *lty) {
+    if (strncmp(lty, "dash", 4) == 0) {
+        double dash_pattern1_dev[grid_dash_pattern1_len], temp;
+        int i;
+        unit_t this_unit;
+        for (i = 0; i < grid_dash_pattern1_len; i++) {
+            this_unit = Unit(grid_dash_pattern1_px[i], "px");
+            dash_pattern1_dev[i] = unit_to_npc(gr, 'x', &this_unit);
+            temp = 0;
+            cairo_matrix_transform_distance(gr->current_node->npc_to_dev,
+                                            dash_pattern1_dev + i, &temp);
+        }
+        cairo_set_dash(gr->cr, dash_pattern1_dev, grid_dash_pattern1_len, 0);
+    } else {
+        cairo_set_dash(gr->cr, NULL, 0, 0);
+    }
+}
+
+/**
+ * Set the global line type.
+ */
+char*
+grid_set_lty(grid_context_t *gr, char *lty) {
+    char *old = gr->par->lty;
+    gr->par->lty = lty;
+    grid_apply_lty(gr, lty);
+    return old;
+}
+
+/**
+ * Set the global horizontal justification.
+ */
+char*
+grid_set_just(grid_context_t *gr, char *just) {
+    char *old = gr->par->just;
+    gr->par->just = just;
+    return old;
+}
+
+/**
+ * Set the global vertical justification.
+ */
+char*
+grid_set_vjust(grid_context_t *gr, char *vjust) {
+    char *old = gr->par->vjust;
+    gr->par->vjust = vjust;
+    return old;
+}
+
+static void
+grid_apply_lwd(grid_context_t *gr, const unit_t *lwd) {
+    double lwd_npc = unit_to_npc(gr, 'x', lwd);
+    double temp = 0;
+    cairo_matrix_transform_distance(gr->current_node->npc_to_dev, &lwd_npc, &temp);
+    cairo_set_line_width(gr->cr, lwd_npc);
+}
+
+
+/**
+ * Set the global line width to the given value.
+ *
+ * \return The old line width.
+ */
+unit_t*
+grid_set_lwd(grid_context_t *gr, unit_t *lwd) {
+    unit_t *old = gr->par->lwd;
+    gr->par->lwd = lwd;
+    grid_apply_lwd(gr, lwd);
+    return old;
+}
+
+static void
 grid_apply_font_size(grid_context_t *gr, const unit_t *font_size) {
     double x_npc = unit_to_npc(gr, 'x', font_size);
     double temp = 0;
@@ -701,26 +806,70 @@ grid_set_font_size(grid_context_t *gr, unit_t *font_size) {
     return old;
 }
 
-static void
-grid_apply_line_width(grid_context_t *gr, unit_t *lwd) {
-    double lwd_npc = unit_to_npc(gr, 'x', lwd);
-    double temp = 0;
-    cairo_matrix_transform_distance(gr->current_node->npc_to_dev, &lwd_npc, &temp);
-    cairo_set_line_width(gr->cr, lwd_npc);
-}
-
+#define Parameter(F,A,B,C) (A && A->F ? A->F : B && B->F ? B->F : C->F)
 
 /**
- * Set the global line width to the given value.
- *
- * \return The old line width.
+ * Attempt to set parameters first from the passed \ref grid_par_t, then from
+ * the current node parameters, and finally from the global parameters. Sets the
+ * cairo source color to the foreground color.
  */
-unit_t*
-grid_set_line_width(grid_context_t *gr, unit_t *lwd) {
-    unit_t *old = gr->par->lwd;
-    gr->par->lwd = lwd;
-    grid_apply_line_width(gr, lwd);
-    return old;
+static void
+grid_apply_parameters(grid_context_t *gr, const grid_par_t *par) {
+    rgba_t *col;
+    char *s;
+    unit_t *u;
+
+    grid_par_t *cur = gr->current_node->par;
+    grid_par_t *def = gr->par;
+
+    col = Parameter(color, par, cur, def);
+    grid_apply_color(gr, col);
+
+    s = Parameter(lty, par, cur, def);
+    grid_apply_lty(gr, s);
+
+    u = Parameter(lwd, par, cur, def);
+    grid_apply_lwd(gr, u);
+
+    u = Parameter(font_size, par, cur, def);
+    grid_apply_font_size(gr, u);
+}
+
+/**
+ * For any non-null fields in `par`, set the corresponding value to the current
+ * node parameters where applicable, and the global defaults otherwise.
+ */
+static void
+grid_restore_parameters(grid_context_t *gr, const grid_par_t *par) {
+    if (par) {
+        rgba_t *col;
+        char *s;
+        unit_t *u;
+
+        grid_par_t *nil = NULL;
+        grid_par_t *cur = gr->current_node->par;
+        grid_par_t *def = gr->par;
+
+        if (par->color) {
+            col = Parameter(color, nil, cur, def);
+            grid_apply_color(gr, col);
+        }
+
+        if (par->lty) {
+            s = Parameter(lty, nil, cur, def);
+            grid_apply_lty(gr, s);
+        }
+
+        if (par->lwd) {
+            u = Parameter(lwd, nil, cur, def);
+            grid_apply_lwd(gr, u);
+        }
+
+        if (par->font_size) {
+            u = Parameter(font_size, nil, cur, def);
+            grid_apply_font_size(gr, u);
+        }
+    }
 }
 
 /**
@@ -751,9 +900,7 @@ new_grid_context(int width_px, int height_px) {
     grid_par_t *par = new_grid_default_par();
     gr->par = par;
 
-    // set the font size and line width (defaults should be in pixels)
-    grid_apply_font_size(gr, par->font_size);
-    grid_apply_line_width(gr, par->lwd);
+    grid_apply_parameters(gr, NULL);
 
     return gr;
 }
@@ -786,48 +933,6 @@ free_grid_context(grid_context_t *gr) {
     free(gr);
 }
 
-static double *grid_dash_pattern1_px = (double[]){10, 5};
-static int grid_dash_pattern1_len = 2;
-
-/**
- * Apply the graphical parameters, fall back to defaults where applicable.
- */
-static void
-grid_apply_line_parameters(grid_context_t *gr, const grid_par_t *par, 
-                           grid_par_t *default_par) 
-{
-    cairo_t *cr = gr->cr;
-    rgba_t *color;
-    if (!(par && (color = par->color)))
-        color = default_par->color;
-
-    cairo_set_source_rgba(cr, color->red, color->green, 
-                          color->blue, color->alpha);
-
-    char *lty;
-    if (!(par && (lty = par->lty)))
-        lty = default_par->lty;
-
-    if (strncmp(lty, "dash", 4) == 0) {
-        double dash_pattern1_npc[grid_dash_pattern1_len];
-        int i;
-        unit_t this_unit;
-        for (i = 0; i < grid_dash_pattern1_len; i++) {
-            this_unit = Unit(grid_dash_pattern1_px[i], "px");
-            dash_pattern1_npc[i] = unit_to_npc(gr, 'x', &this_unit);
-        }
-        cairo_set_dash(cr, dash_pattern1_npc, grid_dash_pattern1_len, 0);
-    } else {
-        cairo_set_dash(cr, NULL, 0, 0);
-    }
-
-    unit_t *lwd;
-    if (!(par && (lwd = par->lwd)))
-        lwd = default_par->lwd;
-
-    grid_apply_line_width(gr, lwd);
-}
-
 /**
  * Draw a line connecting two points.
  */
@@ -835,6 +940,8 @@ void
 grid_line(grid_context_t *gr, const unit_t *x1, const unit_t *y1, 
           const unit_t *x2, const unit_t *y2, const grid_par_t *par)
 {
+    grid_apply_parameters(gr, par);
+
     cairo_t *cr = gr->cr;
     double x1_npc = unit_to_npc(gr, 'x', x1);
     double y1_npc = unit_to_npc(gr, 'y', y1);
@@ -849,14 +956,15 @@ grid_line(grid_context_t *gr, const unit_t *x1, const unit_t *y1,
     cairo_move_to(cr, x1_npc, y1_npc);
     cairo_line_to(cr, x2_npc, y2_npc);
 
-    grid_apply_line_parameters(gr, par, gr->par);
     cairo_stroke(cr);
+    grid_restore_parameters(gr, par);
 }
 
 void
 grid_lines(grid_context_t  *gr, const unit_array_t *xs, const unit_array_t *ys, 
            const grid_par_t *par) 
 {
+    grid_apply_parameters(gr, par);
     cairo_t *cr = gr->cr;
     
     int x_size = unit_array_size(xs);
@@ -887,8 +995,8 @@ grid_lines(grid_context_t  *gr, const unit_array_t *xs, const unit_array_t *ys,
         cairo_line_to(cr, xs_npc[i], ys_npc[i]);
     }
 
-    grid_apply_line_parameters(gr, par, gr->par);
     cairo_stroke(cr);
+    grid_restore_parameters(gr, par);
 
     free(xs_npc);
     free(ys_npc);
@@ -901,7 +1009,8 @@ void
 grid_rect(grid_context_t *gr, const unit_t *x, const unit_t *y, 
           const unit_t *width, const unit_t *height, const grid_par_t *par) 
 {
-    cairo_t *cr = gr->cr;
+    grid_apply_parameters(gr, par);
+
     double x_npc = unit_to_npc(gr, 'x', x);
     double y_npc = unit_to_npc(gr, 'y', y);
     double w_npc = unit_to_npc(gr, 'x', width);
@@ -911,18 +1020,23 @@ grid_rect(grid_context_t *gr, const unit_t *x, const unit_t *y,
     cairo_matrix_transform_point(m, &x_npc, &y_npc);
     cairo_matrix_transform_distance(m, &w_npc, &h_npc);
 
-    cairo_new_path(cr);
-    cairo_rectangle(cr, x_npc, y_npc, w_npc, h_npc);
+    cairo_new_path(gr->cr);
+    cairo_rectangle(gr->cr, x_npc, y_npc, w_npc, h_npc);
 
-    rgba_t *fill;
-    if ((par && (fill = par->fill)) || (fill = gr->par->fill)) {
-        cairo_set_source_rgba(cr, fill->red, fill->green,
-                              fill->blue, fill->alpha);
-        cairo_fill_preserve(cr);
+    rgba_t *col;
+    if ((par && (col = par->fill)) || 
+        (gr->current_node->par && (col = gr->current_node->par->fill))) 
+    {
+        cairo_set_source_rgba(gr->cr, col->red, col->green,
+                              col->blue, col->alpha);
+        cairo_fill_preserve(gr->cr);
+
+        col = Parameter(color, par, gr->current_node->par, gr->par);
+        grid_apply_color(gr, col);
     }
 
-    grid_apply_line_parameters(gr, par, gr->par);
-    cairo_stroke(cr);
+    cairo_stroke(gr->cr);
+    grid_restore_parameters(gr, par);
 }
 
 /**
@@ -1005,16 +1119,7 @@ void
 grid_text(grid_context_t *gr, const char *text, 
           const unit_t *x, const unit_t *y, const grid_par_t *par) 
 {
-
-    // set the font size first so that subsequent distance calculations are
-    // correct.
-    unit_t *font_size;
-    if (par && par->font_size)
-        font_size = par->font_size;
-    else
-        font_size = gr->par->font_size;
-
-    grid_apply_font_size(gr, font_size);
+    grid_apply_parameters(gr, par);
 
     cairo_t *cr = gr->cr;
     cairo_text_extents_t *text_extents = malloc(sizeof(cairo_text_extents_t));
@@ -1044,15 +1149,6 @@ grid_text(grid_context_t *gr, const char *text,
         y = my_y;
     }
 
-    rgba_t *color;
-    if (par && par->color)
-        color = par->color;
-    else
-        color = gr->par->color;
-
-    cairo_set_source_rgba(cr, color->red, color->blue, 
-                          color->green, color->alpha);
-    
     double x_npc = unit_to_npc(gr, 'x', x);
     double y_npc = unit_to_npc(gr, 'y', y);
     cairo_matrix_t *npc_to_dev = gr->current_node->npc_to_dev;
@@ -1070,6 +1166,7 @@ grid_text(grid_context_t *gr, const char *text,
     cairo_move_to(cr, x_npc, m.y0 - y_npc);
     cairo_show_text(cr, text);
 
+    grid_restore_parameters(gr, par);
     cairo_set_matrix(cr, &m);
 
     if (my_x)
@@ -1086,7 +1183,7 @@ grid_text(grid_context_t *gr, const char *text,
  */
 void
 grid_xaxis(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
-    grid_apply_line_parameters(gr, par, gr->par);
+    grid_apply_parameters(gr, par);
 
     unit_t th = Unit(0.5, "lines");
     double tick_height = unit_to_npc(gr, 'y', &th);
@@ -1108,4 +1205,6 @@ grid_xaxis(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
         cairo_line_to(gr->cr, x2_npc, y2_npc);
         cairo_stroke(gr->cr);
     }
+
+    grid_restore_parameters(gr, par);
 }
