@@ -62,10 +62,8 @@ main(void) {
     par = (grid_par_t){.color = &violet};
     grid_lines(gr, &x_units, &y_units, &par);
 
-    double ticks[] = {0, 1, 2, 3, 4, 5, 6};
-    unit_array_t tick_units = UnitArray(7, ticks, "native");
     par = (grid_par_t){.lwd = unit(2, "px")};
-    grid_xaxis(gr, &tick_units, &par);
+    grid_xaxis(gr, &par);
 
     cairo_surface_write_to_png(gr->surface, "sine.png");
 }

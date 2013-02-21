@@ -193,6 +193,9 @@ grid_text(grid_context_t*, const char*, const unit_t*, const unit_t*,
           const grid_par_t*);
 
 void
-grid_xaxis(grid_context_t*, const unit_array_t*, const grid_par_t*);
+grid_xaxis(grid_context_t*, const grid_par_t*);
+
+void
+grid_xaxis_at(grid_context_t*, const unit_array_t*, const grid_par_t*);
 
 #endif

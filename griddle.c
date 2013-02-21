@@ -72,11 +72,11 @@ unit_to_npc(grid_context_t *gr, char dim, const unit_t *u) {
     cairo_matrix_transform_point(node->npc_to_ntv, &x_ntv, &y_ntv);
     cairo_matrix_transform_distance(node->npc_to_ntv, &w_ntv, &h_ntv);
 
-    cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
-    cairo_font_extents(gr->cr, font_extents);
+    cairo_font_extents_t font_extents;
+    cairo_font_extents(gr->cr, &font_extents);
 
-    cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
-    cairo_text_extents(gr->cr, "m", em_extents);
+    cairo_text_extents_t em_extents;
+    cairo_text_extents(gr->cr, "m", &em_extents);
 
     double dev_per_npc, o_ntv, size_ntv;  
     dev_per_npc = o_ntv = size_ntv = 0.0;
@@ -93,11 +93,9 @@ unit_to_npc(grid_context_t *gr, char dim, const unit_t *u) {
         fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
     }
 
-    double result = unit_to_npc_helper(dev_per_npc, font_extents->height,
-                                       em_extents->width, o_ntv, size_ntv, u);
+    double result = unit_to_npc_helper(dev_per_npc, font_extents.height,
+                                       em_extents.width, o_ntv, size_ntv, u);
 
-    free(font_extents);
-    free(em_extents);
     return result;
 }
 
@@ -198,11 +196,11 @@ unit_array_to_npc(double *result, grid_context_t *gr, char dim,
     cairo_matrix_transform_point(node->npc_to_ntv, &x_ntv, &y_ntv);
     cairo_matrix_transform_distance(node->npc_to_ntv, &w_ntv, &h_ntv);
 
-    cairo_font_extents_t *font_extents = malloc(sizeof(cairo_font_extents_t));
-    cairo_font_extents(gr->cr, font_extents);
+    cairo_font_extents_t font_extents;
+    cairo_font_extents(gr->cr, &font_extents);
 
-    cairo_text_extents_t *em_extents = malloc(sizeof(cairo_text_extents_t));
-    cairo_text_extents(gr->cr, "m", em_extents);
+    cairo_text_extents_t em_extents;
+    cairo_text_extents(gr->cr, "m", &em_extents);
 
     double dev_per_npc, o_ntv, size_ntv;
     dev_per_npc = o_ntv = size_ntv = 0.0;
@@ -219,12 +217,9 @@ unit_array_to_npc(double *result, grid_context_t *gr, char dim,
         fprintf(stderr, "Warning: unknown dimension '%c'\n", dim);
     }
 
-    unit_array_to_npc_helper(result, dev_per_npc, font_extents->height,
-                             em_extents->width, o_ntv, size_ntv, 
+    unit_array_to_npc_helper(result, dev_per_npc, font_extents.height,
+                             em_extents.width, o_ntv, size_ntv, 
                              unit_array_size(u), u);
-
-    free(font_extents);
-    free(em_extents);
 }
 
 //
@@ -1177,12 +1172,108 @@ grid_text(grid_context_t *gr, const char *text,
 }
 
 /**
- * Draw tick marks along the x-axis at the specified values.
- *
- * \todo Labeled ticks.
+ * Add labeled tick marks to the bottom of the current viewport. Tick location
+ * and labels are generated from the viewport's native coordinate system.
  */
 void
-grid_xaxis(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
+grid_xaxis(grid_context_t *gr, const grid_par_t *par) {
+    grid_apply_parameters(gr, par);
+
+    double x_ntv, y_ntv, w_ntv, h_ntv;
+    x_ntv = y_ntv = 0.0;
+    w_ntv = h_ntv = 1.0;
+    cairo_matrix_transform_point(gr->current_node->npc_to_ntv, &x_ntv, &y_ntv);
+    cairo_matrix_transform_distance(gr->current_node->npc_to_ntv, &w_ntv, &h_ntv);
+
+    double scale = log10(w_ntv);
+    double step = pow(10, floor(scale));
+    char fmt[20];
+
+    if (scale >= 0) {
+        double intpart;
+        double fracpart = modf(scale, &intpart);
+        if (0.3 < fracpart && fracpart <= 0.5) {
+            step *= 0.5;
+            strcpy(fmt, "%.1f");
+        } else if (fracpart <= 0.3) {
+            step *= 0.25;
+            strcpy(fmt, "%.2f");
+        } else {
+            strcpy(fmt, "%.0f");
+        }
+    } else {
+        snprintf(fmt, 20, "%%.%df", (int)floor(scale));
+    }
+
+    // TODO do a similar adjustment for scale < 0?
+
+    // find the smallest tick greater than x_ntv
+    double first_tick = ceil(x_ntv / step) * step; 
+
+    // count the number of ticks we can fit
+    int n_ticks = 0;
+    double t;
+    for (t = first_tick; t < x_ntv + w_ntv; t += step)
+        n_ticks++;
+
+    double ticks[n_ticks];
+    int i;
+    for (i = 0; i < n_ticks; i++)
+        ticks[i] = first_tick + i*step;
+
+    unit_t height = Unit(0.4, "lines");
+    double height_npc = unit_to_npc(gr, 'y', &height);
+
+    unit_t x_unit = { .type = "native" };
+    unit_t y_unit = Unit(-1.5, "line");
+    double x1_npc, x2_npc, y1_npc, y2_npc;
+    char buf[20];
+    cairo_text_extents_t text_extents; 
+    cairo_matrix_t m, id;
+    id = (cairo_matrix_t){ .xx = 1, .yy = 1 };
+
+    for (i = 0; i < n_ticks; i++) {
+        x_unit.value = ticks[i];
+        x1_npc = unit_to_npc(gr, 'x', &x_unit);
+        y1_npc = 0;
+        x2_npc = x1_npc;
+        y2_npc = -height_npc;
+        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x1_npc, &y1_npc);
+        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x2_npc, &y2_npc);
+
+        cairo_new_path(gr->cr);
+        cairo_move_to(gr->cr, x1_npc, y1_npc);
+        cairo_line_to(gr->cr, x2_npc, y2_npc);
+        cairo_stroke(gr->cr);
+
+        snprintf(buf, 20, fmt, ticks[i]);
+        cairo_text_extents(gr->cr, buf, &text_extents);
+        x1_npc = unit_to_npc(gr, 'x', &x_unit);
+        y1_npc = unit_to_npc(gr, 'y', &y_unit);
+        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x1_npc, &y1_npc);
+        x1_npc -= text_extents.width / 2;
+
+        cairo_get_matrix(gr->cr, &m);
+        cairo_set_matrix(gr->cr, &id);
+        cairo_new_path(gr->cr);
+        cairo_move_to(gr->cr, x1_npc, m.y0 - y1_npc);
+        cairo_show_text(gr->cr, buf);
+        cairo_set_matrix(gr->cr, &m);
+    }
+
+    grid_restore_parameters(gr, par);
+}
+
+/**
+ * Draw tick marks along the x-axis at the specified values. Current
+ * implementation doesn't label ticks.
+ *
+ * \todo Consider this implementation a stub. I haven't figured out the best
+ * way to allow user-defined ticks. Prefer \ref grid_xaxis, which selects tick
+ * locations automatically.
+ */
+void
+grid_xaxis_at(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
     grid_apply_parameters(gr, par);
 
     unit_t th = Unit(0.5, "lines");
