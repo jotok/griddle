@@ -198,4 +198,7 @@ grid_xaxis(grid_context_t*, const grid_par_t*);
 void
 grid_xaxis_at(grid_context_t*, const unit_array_t*, const grid_par_t*);
 
+void
+grid_yaxis(grid_context_t*, const grid_par_t*);
+
 #endif

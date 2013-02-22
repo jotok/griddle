@@ -1176,7 +1176,7 @@ grid_text(grid_context_t *gr, const char *text,
  * Copy a format string to `fmt` appropriate to the scale. The last argument
  * is passed to `strncpy` and `snprintf`.
  */
-static int
+static double
 grid_scale_step_and_format(double scale, char *fmt, int n) {
     double step = pow(10, floor(scale));
     double intpart;
@@ -1206,8 +1206,6 @@ grid_scale_step_and_format(double scale, char *fmt, int n) {
 /**
  * Add labeled tick marks to the bottom of the current viewport. Tick location
  * and labels are generated from the viewport's native coordinate system.
- *
- * \todo The string format code is wrong.
  */
 void
 grid_xaxis(grid_context_t *gr, const grid_par_t *par) {
@@ -1221,7 +1219,6 @@ grid_xaxis(grid_context_t *gr, const grid_par_t *par) {
 
     double scale = log10(w_ntv);
     char fmt[20];
-
     double step = grid_scale_step_and_format(scale, fmt, 19);
 
     // TODO do a similar adjustment for scale < 0?
@@ -1318,3 +1315,83 @@ grid_xaxis_at(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par)
 
     grid_restore_parameters(gr, par);
 }
+
+/**
+ * Add labeled tick marks to the left side of the current viewport. Tick
+ * location and labels are generated from the viewport's native coordinate
+ * system.
+ */
+void
+grid_yaxis(grid_context_t *gr, const grid_par_t *par) {
+    grid_apply_parameters(gr, par);
+
+    double x_ntv, y_ntv, w_ntv, h_ntv;
+    x_ntv = y_ntv = 0.0;
+    w_ntv = h_ntv = 1.0;
+    cairo_matrix_transform_point(gr->current_node->npc_to_ntv, &x_ntv, &y_ntv);
+    cairo_matrix_transform_distance(gr->current_node->npc_to_ntv, &w_ntv, &h_ntv);
+
+    double scale = log10(h_ntv);
+    char fmt[20];
+    double step = grid_scale_step_and_format(scale, fmt, 19);
+
+    // TODO do a similar adjustment for scale < 0?
+
+    // find the smallest tick greater than x_ntv
+    double first_tick = ceil(y_ntv / step) * step; 
+
+    // count the number of ticks we can fit
+    int n_ticks = 0;
+    double t;
+    for (t = first_tick; t < y_ntv + h_ntv; t += step)
+        n_ticks++;
+
+    double ticks[n_ticks];
+    int i;
+    for (i = 0; i < n_ticks; i++)
+        ticks[i] = first_tick + i*step;
+
+    unit_t width = Unit(0.75, "em");
+    double width_npc = unit_to_npc(gr, 'x', &width);
+
+    unit_t x_unit = Unit(-1.5, "em");
+    unit_t y_unit = { .type = "native" };
+    double x1_npc, x2_npc, y1_npc, y2_npc;
+    char buf[20];
+    cairo_text_extents_t text_extents; 
+    cairo_matrix_t m, id;
+    id = (cairo_matrix_t){ .xx = 1, .yy = 1 };
+
+    for (i = 0; i < n_ticks; i++) {
+        y_unit.value = ticks[i];
+        x1_npc = 0;
+        y1_npc = unit_to_npc(gr, 'y', &y_unit);
+        x2_npc = -width_npc;
+        y2_npc = y1_npc;
+        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x1_npc, &y1_npc);
+        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x2_npc, &y2_npc);
+
+        cairo_new_path(gr->cr);
+        cairo_move_to(gr->cr, x1_npc, y1_npc);
+        cairo_line_to(gr->cr, x2_npc, y2_npc);
+        cairo_stroke(gr->cr);
+
+        snprintf(buf, 20, fmt, ticks[i]);
+        cairo_text_extents(gr->cr, buf, &text_extents);
+        x1_npc = unit_to_npc(gr, 'x', &x_unit);
+        y1_npc = unit_to_npc(gr, 'y', &y_unit);
+        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x1_npc, &y1_npc);
+        x1_npc -= text_extents.width;
+        y1_npc -= text_extents.height / 2;
+
+        cairo_get_matrix(gr->cr, &m);
+        cairo_set_matrix(gr->cr, &id);
+        cairo_new_path(gr->cr);
+        cairo_move_to(gr->cr, x1_npc, m.y0 - y1_npc);
+        cairo_show_text(gr->cr, buf);
+        cairo_set_matrix(gr->cr, &m);
+    }
+
+    grid_restore_parameters(gr, par);
+}
+
