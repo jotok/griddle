@@ -1082,8 +1082,8 @@ grid_vjust_to_y(char *vjust, const cairo_text_extents_t *extents) {
     unit_t *y;
 
     if (strncmp(vjust, "middle", 1) == 0) {
-        // "add" instead of "sub" because we have to flip the coordinate axis
-        // before drawing the text.
+        // "add" instead of "sub" because y_bearing is measured with a downward
+        // y-axis.
         y = unit_add(unit(0.5, "npc"), 
                      unit(extents->height / 2.0 + extents->y_bearing, "px"));
     } else if (strncmp(vjust, "bottom", 1) == 0) {
@@ -1173,8 +1173,41 @@ grid_text(grid_context_t *gr, const char *text,
 }
 
 /**
+ * Copy a format string to `fmt` appropriate to the scale. The last argument
+ * is passed to `strncpy` and `snprintf`.
+ */
+static int
+grid_scale_step_and_format(double scale, char *fmt, int n) {
+    double step = pow(10, floor(scale));
+    double intpart;
+    double fracpart = modf(scale, &intpart);
+
+    strcpy(fmt, "%.0f"); // default
+
+    if (scale >= 0) {
+        if (0.3 < fracpart && fracpart <= 0.5) {
+            step *= 0.5;
+            if (scale < 1)
+                strncpy(fmt, "%.1f", n);
+        } else if (fracpart <= 0.3) {
+            step *= 0.25;
+            if (scale < 1)
+                strncpy(fmt, "%.2f", n);
+            else if (scale < 2)
+                strncpy(fmt, "%.1f", n);
+        }
+    } else {
+        snprintf(fmt, n, "%%.%df", (int)floor(scale));
+    }
+
+    return step;
+}
+
+/**
  * Add labeled tick marks to the bottom of the current viewport. Tick location
  * and labels are generated from the viewport's native coordinate system.
+ *
+ * \todo The string format code is wrong.
  */
 void
 grid_xaxis(grid_context_t *gr, const grid_par_t *par) {
@@ -1187,24 +1220,9 @@ grid_xaxis(grid_context_t *gr, const grid_par_t *par) {
     cairo_matrix_transform_distance(gr->current_node->npc_to_ntv, &w_ntv, &h_ntv);
 
     double scale = log10(w_ntv);
-    double step = pow(10, floor(scale));
     char fmt[20];
 
-    if (scale >= 0) {
-        double intpart;
-        double fracpart = modf(scale, &intpart);
-        if (0.3 < fracpart && fracpart <= 0.5) {
-            step *= 0.5;
-            strcpy(fmt, "%.1f");
-        } else if (fracpart <= 0.3) {
-            step *= 0.25;
-            strcpy(fmt, "%.2f");
-        } else {
-            strcpy(fmt, "%.0f");
-        }
-    } else {
-        snprintf(fmt, 20, "%%.%df", (int)floor(scale));
-    }
+    double step = grid_scale_step_and_format(scale, fmt, 19);
 
     // TODO do a similar adjustment for scale < 0?
 
