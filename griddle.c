@@ -1050,20 +1050,21 @@ grid_full_rect(grid_context_t *gr, const grid_par_t *par) {
 }
 
 /**
- * Returns a \ref unit_t indicating where to place the `x`-coordinate so that
+ * Allocates a \ref unit_t indicating where to place the `x`-coordinate so that
  * text with width `width_npc` has the alignment given by `just`.
  */
 static unit_t*
-grid_just_to_x(char *just, double width_npc) {
+grid_just_to_x(char *just, const cairo_text_extents_t *extents) {
     unit_t *x;
 
     if (strncmp(just, "left", 1) == 0) {
         x = unit(1, "em");
     } else if (strncmp(just, "right", 1) == 0) {
         x = unit_sub(unit_sub(unit(1, "npc"), unit(1, "em")),
-                     unit(width_npc, "npc"));
+                     unit(extents->width + extents->x_bearing, "px"));
     } else if (strncmp(just, "center", 1) == 0) {
-        x = unit_sub(unit(0.5, "npc"), unit(width_npc/2.0, "npc"));
+        x = unit_sub(unit(0.5, "npc"), 
+                     unit(extents->width / 2.0 + extents->x_bearing, "px"));
     } else {
         fprintf(stderr, "Warning: unknown justification '%s'\n", just);
         x = unit(0, "npc");
@@ -1073,15 +1074,18 @@ grid_just_to_x(char *just, double width_npc) {
 }
 
 /**
- * Returns a \ref unit_t indicating where to place the `y`-coordinate so that
+ * Allocates a \ref unit_t indicating where to place the `y`-coordinate so that
  * text has the vertical alignment given by `vjust`.
  */
 static unit_t*
-grid_vjust_to_y(char *vjust) {
+grid_vjust_to_y(char *vjust, const cairo_text_extents_t *extents) {
     unit_t *y;
 
     if (strncmp(vjust, "middle", 1) == 0) {
-        y = unit_sub(unit(0.5, "npc"), unit(0.5, "line"));
+        // "add" instead of "sub" because we have to flip the coordinate axis
+        // before drawing the text.
+        y = unit_add(unit(0.5, "npc"), 
+                     unit(extents->height / 2.0 + extents->y_bearing, "px"));
     } else if (strncmp(vjust, "bottom", 1) == 0) {
         y = unit(1, "line");
     } else if (strncmp(vjust, "top", 1) == 0) {
@@ -1117,18 +1121,16 @@ grid_text(grid_context_t *gr, const char *text,
     grid_apply_parameters(gr, par);
 
     cairo_t *cr = gr->cr;
-    cairo_text_extents_t *text_extents = malloc(sizeof(cairo_text_extents_t));
-    cairo_text_extents(cr, text, text_extents);
+    cairo_text_extents_t text_extents;
+    cairo_text_extents(cr, text, &text_extents);
 
     unit_t *my_x = NULL; 
 
     if (!x) {
-        double width_npc = text_extents->width / gr->current_node->npc_to_dev->xx;
-
         if (par && par->just) 
-            my_x = grid_just_to_x(par->just, width_npc);
+            my_x = grid_just_to_x(par->just, &text_extents);
         else
-            my_x = grid_just_to_x(gr->par->just, width_npc);
+            my_x = grid_just_to_x(gr->par->just, &text_extents);
 
         x = my_x;
     }
@@ -1137,9 +1139,9 @@ grid_text(grid_context_t *gr, const char *text,
 
     if (!y) {
         if (par && par->vjust) 
-            my_y = grid_vjust_to_y(par->vjust);
+            my_y = grid_vjust_to_y(par->vjust, &text_extents);
         else
-            my_y = grid_vjust_to_y(gr->par->vjust);
+            my_y = grid_vjust_to_y(gr->par->vjust, &text_extents);
 
         y = my_y;
     }
@@ -1168,7 +1170,6 @@ grid_text(grid_context_t *gr, const char *text,
         free_unit(my_x);
     if (my_y)
         free_unit(my_y);
-    free(text_extents);
 }
 
 /**

@@ -16,6 +16,8 @@ main(void) {
     grid_push_viewport(gr,
       new_grid_viewport(unit(0, "npc"), unit_sub(unit(1, "npc"), unit(4.1, "lines")),
                         unit(1, "npc"), unit(4.1, "lines")));
+//     grid_line(gr, unit(0, "npc"), unit(0.5, "npc"),
+//                   unit(1, "npc"), unit(0.5, "npc"), NULL);
     par = (grid_par_t){.color = &content1, 
                        .vjust = "middle", 
                        .font_size = unit(30, "px")};
