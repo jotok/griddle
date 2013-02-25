@@ -1281,42 +1281,6 @@ grid_xaxis(grid_context_t *gr, const grid_par_t *par) {
 }
 
 /**
- * Draw tick marks along the x-axis at the specified values. Current
- * implementation doesn't label ticks.
- *
- * \todo Consider this implementation a stub. I haven't figured out the best
- * way to allow user-defined ticks. Prefer \ref grid_xaxis, which selects tick
- * locations automatically.
- */
-void
-grid_xaxis_at(grid_context_t *gr, const unit_array_t *at, const grid_par_t *par) {
-    grid_apply_parameters(gr, par);
-
-    unit_t th = Unit(0.5, "lines");
-    double tick_height = unit_to_npc(gr, 'y', &th);
-
-    int i;
-    unit_t u;
-    double x1_npc, y1_npc, x2_npc, y2_npc;
-    for (i = 0; i < at->size; i++) {
-        u = Unit(at->values[i], at->type);
-        x1_npc = unit_to_npc(gr, 'x', &u);
-        y1_npc = 0;
-        x2_npc = x1_npc;
-        y2_npc = -tick_height;
-        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x1_npc, &y1_npc);
-        cairo_matrix_transform_point(gr->current_node->npc_to_dev, &x2_npc, &y2_npc);
-
-        cairo_new_path(gr->cr);
-        cairo_move_to(gr->cr, x1_npc, y1_npc);
-        cairo_line_to(gr->cr, x2_npc, y2_npc);
-        cairo_stroke(gr->cr);
-    }
-
-    grid_restore_parameters(gr, par);
-}
-
-/**
  * Add labeled tick marks to the left side of the current viewport. Tick
  * location and labels are generated from the viewport's native coordinate
  * system.
