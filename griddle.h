@@ -185,6 +185,10 @@ void
 grid_point(grid_context_t*, const unit_t*, const unit_t*, const grid_par_t*);
 
 void
+grid_points(grid_context_t*, const unit_array_t*, const unit_array_t*,
+            const grid_par_t*);
+
+void
 grid_rect(grid_context_t*, const unit_t*, const unit_t*, 
           const unit_t*, const unit_t*, const grid_par_t*);
 

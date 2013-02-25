@@ -985,6 +985,9 @@ grid_line(grid_context_t *gr, const unit_t *x1, const unit_t *y1,
     grid_restore_parameters(gr, par);
 }
 
+/**
+ * Draw a line that connects the coordinates given by `xs` and `ys`.
+ */
 void
 grid_lines(grid_context_t  *gr, const unit_array_t *xs, const unit_array_t *ys, 
            const grid_par_t *par) 
@@ -1070,6 +1073,63 @@ grid_point(grid_context_t *gr, const unit_t *x, const unit_t *y,
     cairo_fill(gr->cr);
 
     grid_restore_parameters(gr, par);
+}
+
+/**
+ * Draw a point at each of the coordinates defined by `xs` and `ys`.
+ */
+void
+grid_points(grid_context_t *gr, const unit_array_t *xs, const unit_array_t *ys,
+            const grid_par_t *par)
+{
+    grid_apply_parameters(gr, par);
+
+    int x_size = unit_array_size(xs);
+    int y_size = unit_array_size(ys);
+
+    if (x_size <= 0) {
+        fprintf(stderr, "Warning: can't draw 0 length array.\n");
+        return;
+    } else if (x_size != y_size) {
+        fprintf(stderr, "Warning: can't draw arrays of different sizes.\n");
+        return;
+    }
+
+    double *xs_npc = malloc(x_size * sizeof(double));
+    double *ys_npc = malloc(x_size * sizeof(double));
+
+    unit_array_to_npc(xs_npc, gr, 'x', xs);
+    unit_array_to_npc(ys_npc, gr, 'y', ys);
+
+    unit_t *psz = Parameter(point_size, par, gr->current_node->par, gr->par);
+    double psz_npc = unit_to_npc(gr, 'x', psz);
+    double temp = 0.0;
+
+    cairo_matrix_t *m = gr->current_node->npc_to_dev;
+    cairo_matrix_transform_distance(m, &psz_npc, &temp);
+
+    void (*draw_fn)(grid_context_t*, double, double, double);
+    char *pty = Parameter(point_type, par, gr->current_node->par, gr->par);
+    if (strcmp(pty, "round") == 0) {
+        draw_fn = grid_point_round;
+    } else {
+        fprintf(stderr, "Unknown point type: '%s'\n", pty);
+        draw_fn = grid_point_round;
+    }
+
+    cairo_new_path(gr->cr);
+
+    int i;
+    for (i = 0; i < x_size; i++) {
+        cairo_matrix_transform_point(m, xs_npc + i, ys_npc + i);
+        draw_fn(gr, xs_npc[i], ys_npc[i], psz_npc);
+    }
+
+    cairo_fill(gr->cr);
+    grid_restore_parameters(gr, par);
+
+    free(xs_npc);
+    free(ys_npc);
 }
 
 /**
