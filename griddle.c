@@ -12,6 +12,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846 
+#endif
+
 /**
  * NOTE: this function assumes device coordinates are pixels.
  */
@@ -269,6 +273,10 @@ new_grid_default_par(void) {
     par->line_type = malloc(strlen(line_type) + 1);
     strcpy(par->line_type, line_type);
 
+    char *point_type = "round";
+    par->point_type = malloc(strlen(point_type) + 1);
+    strcpy(par->point_type, point_type);
+
     char *just = "center";
     par->just = malloc(strlen(just) + 1);
     strcpy(par->just, just);
@@ -278,6 +286,7 @@ new_grid_default_par(void) {
     strcpy(par->vjust, vjust);
 
     par->line_width = unit(2, "px");
+    par->point_size = unit(4, "px");
     par->font_size = unit(20, "px");
 
     return par;
@@ -739,6 +748,16 @@ grid_set_line_type(grid_context_t *gr, char *line_type) {
 }
 
 /**
+ * Set the global point type.
+ */
+char*
+grid_set_point_type(grid_context_t *gr, char *pty) {
+    char *old = gr->par->point_type;
+    gr->par->point_type = pty;
+    return old;
+}
+
+/**
  * Set the global horizontal justification.
  */
 char*
@@ -766,7 +785,6 @@ grid_apply_line_width(grid_context_t *gr, const unit_t *lwd) {
     cairo_set_line_width(gr->cr, lwd_npc);
 }
 
-
 /**
  * Set the global line width to the given value.
  *
@@ -777,6 +795,18 @@ grid_set_line_width(grid_context_t *gr, unit_t *lwd) {
     unit_t *old = gr->par->line_width;
     gr->par->line_width = lwd;
     grid_apply_line_width(gr, lwd);
+    return old;
+}
+
+/**
+ * Set the global point size to the given value.
+ *
+ * \return The old font size.
+ */
+unit_t*
+grid_set_point_size(grid_context_t *gr, unit_t *point_size) {
+    unit_t *old = gr->par->point_size;
+    gr->par->point_size = point_size;
     return old;
 }
 
@@ -998,12 +1028,48 @@ grid_lines(grid_context_t  *gr, const unit_array_t *xs, const unit_array_t *ys,
 }
 
 /**
+ * Draw a round point with the given size at the current location.
+ */
+static void
+grid_point_round(grid_context_t *gr, double x_dev, double y_dev, double size_dev) {
+    cairo_new_sub_path(gr->cr);
+    cairo_arc(gr->cr, x_dev, y_dev, size_dev, 0, 2 * M_PI);
+}
+
+/**
  * Draw a point at the given coordinates.
  */
 void
 grid_point(grid_context_t *gr, const unit_t *x, const unit_t *y, 
            const grid_par_t *par) 
 {
+    grid_apply_parameters(gr, par);
+
+    double x_npc = unit_to_npc(gr, 'x', x);
+    double y_npc = unit_to_npc(gr, 'y', y);
+
+    unit_t *psz = Parameter(point_size, par, gr->current_node->par, gr->par);
+    double psz_npc = unit_to_npc(gr, 'x', psz);
+    double temp = 0.0;
+
+    cairo_matrix_t *m = gr->current_node->npc_to_dev;
+    cairo_matrix_transform_point(m, &x_npc, &y_npc);
+    cairo_matrix_transform_distance(m, &psz_npc, &temp);
+
+    cairo_new_path(gr->cr);
+    cairo_move_to(gr->cr, x_npc, y_npc);
+
+    char *pty = Parameter(point_type, par, gr->current_node->par, gr->par);
+    if (strcmp(pty, "round") == 0) {
+        grid_point_round(gr, x_npc, y_npc, psz_npc);
+    } else {
+        fprintf(stderr, "Unknown point type: '%s'\n", pty);
+        grid_point_round(gr, x_npc, y_npc, psz_npc);
+    }
+
+    cairo_fill(gr->cr);
+
+    grid_restore_parameters(gr, par);
 }
 
 /**

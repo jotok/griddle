@@ -21,8 +21,8 @@ typedef struct {
  */
 typedef struct {
     rgba_t *color, *fill;
-    char *line_type, *just, *vjust;
-    unit_t *line_width, *font_size;
+    char *line_type, *point_type, *just, *vjust;
+    unit_t *line_width, *point_size, *font_size;
 } grid_par_t;
 
 /**
@@ -180,6 +180,9 @@ grid_line(grid_context_t*, const unit_t*, const unit_t*,
 void
 grid_lines(grid_context_t*, const unit_array_t*, const unit_array_t*, 
            const grid_par_t*);
+
+void
+grid_point(grid_context_t*, const unit_t*, const unit_t*, const grid_par_t*);
 
 void
 grid_rect(grid_context_t*, const unit_t*, const unit_t*, 
