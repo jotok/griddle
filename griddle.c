@@ -717,23 +717,51 @@ grid_set_fill(grid_context_t *gr, rgba_t *fill) {
 static double *grid_dash_pattern1_px = (double[]){10, 5};
 static int grid_dash_pattern1_len = 2;
 
+static double *grid_dash_pattern2_px = (double[]){3, 4};
+static int grid_dash_pattern2_len = 2;
+
+static double *grid_dash_pattern3_px = (double[]){3, 5, 10, 5};
+static int grid_dash_pattern3_len = 4;
+
 static void
 grid_apply_line_type(grid_context_t *gr, const char *line_type) {
-    if (strncmp(line_type, "dash", 4) == 0) {
-        double dash_pattern1_dev[grid_dash_pattern1_len], temp;
+    double *dash_pattern_px, *dash_pattern_dev;
+    dash_pattern_px = dash_pattern_dev = NULL;
+    int dash_pattern_len = 0;
+
+    if (strcmp(line_type, "solid") == 0) {
+        // do nothing (and don't print a warning)
+    } else if (strcmp(line_type, "dotdash") == 0) {
+        dash_pattern_px = grid_dash_pattern3_px;
+        dash_pattern_len = grid_dash_pattern3_len;
+    } else if (strncmp(line_type, "dash", 4) == 0) {
+        dash_pattern_px = grid_dash_pattern1_px;
+        dash_pattern_len = grid_dash_pattern1_len;
+    } else if (strncmp(line_type, "dot", 3) == 0) {
+        dash_pattern_px = grid_dash_pattern2_px;
+        dash_pattern_len = grid_dash_pattern2_len;
+    } else {
+        fprintf(stderr, "Unknown line type: '%s'\n", line_type);
+    }
+
+    if (dash_pattern_px) {
+        dash_pattern_dev = malloc(dash_pattern_len * sizeof(double));
         int i;
+        double temp;
         unit_t this_unit;
-        for (i = 0; i < grid_dash_pattern1_len; i++) {
-            this_unit = Unit(grid_dash_pattern1_px[i], "px");
-            dash_pattern1_dev[i] = unit_to_npc(gr, 'x', &this_unit);
+        for (i = 0; i < dash_pattern_len; i++) {
+            this_unit = Unit(dash_pattern_px[i], "px");
+            dash_pattern_dev[i] = unit_to_npc(gr, 'x', &this_unit);
             temp = 0;
             cairo_matrix_transform_distance(gr->current_node->npc_to_dev,
-                                            dash_pattern1_dev + i, &temp);
+                                            dash_pattern_dev + i, &temp);
         }
-        cairo_set_dash(gr->cr, dash_pattern1_dev, grid_dash_pattern1_len, 0);
-    } else {
-        cairo_set_dash(gr->cr, NULL, 0, 0);
     }
+
+    cairo_set_dash(gr->cr, dash_pattern_dev, dash_pattern_len, 0);
+
+    if (dash_pattern_dev)
+        free(dash_pattern_dev);
 }
 
 /**
@@ -1040,6 +1068,30 @@ grid_point_round(grid_context_t *gr, double x_dev, double y_dev, double size_dev
 }
 
 /**
+ * Draw a square point with the given size at the current location.
+ */
+static void
+grid_point_square(grid_context_t *gr, double x_dev, double y_dev, double size_dev) {
+    // Let's normalize different point shapes to have the same area.
+    double sz = sqrt(M_PI) * size_dev;
+    cairo_rectangle(gr->cr, x_dev - sz / 2, y_dev - sz / 2, sz, sz);
+}
+
+/**
+ * Draw a diamond with the given size at the current location.
+ */
+static void
+grid_point_diamond(grid_context_t *gr, double x_dev, double y_dev, double size_dev) {
+    // Let's normalize different point shapes to have the same area.
+    double sz = sqrt(M_PI / 2) * size_dev;
+    cairo_new_sub_path(gr->cr);
+    cairo_move_to(gr->cr, x_dev, y_dev - sz);
+    cairo_line_to(gr->cr, x_dev + sz, y_dev);
+    cairo_line_to(gr->cr, x_dev, y_dev + sz);
+    cairo_line_to(gr->cr, x_dev - sz, y_dev);
+}
+
+/**
  * Draw a point at the given coordinates.
  */
 void
@@ -1065,7 +1117,11 @@ grid_point(grid_context_t *gr, const unit_t *x, const unit_t *y,
     char *pty = Parameter(point_type, par, gr->current_node->par, gr->par);
     if (strcmp(pty, "round") == 0) {
         grid_point_round(gr, x_npc, y_npc, psz_npc);
-    } else {
+    } else if (strcmp(pty, "square") == 0) {
+        grid_point_square(gr, x_npc, y_npc, psz_npc);
+    } else if (strcmp(pty, "diamond") == 0) {
+        grid_point_diamond(gr, x_npc, y_npc, psz_npc);
+    }else {
         fprintf(stderr, "Unknown point type: '%s'\n", pty);
         grid_point_round(gr, x_npc, y_npc, psz_npc);
     }
@@ -1112,6 +1168,10 @@ grid_points(grid_context_t *gr, const unit_array_t *xs, const unit_array_t *ys,
     char *pty = Parameter(point_type, par, gr->current_node->par, gr->par);
     if (strcmp(pty, "round") == 0) {
         draw_fn = grid_point_round;
+    } else if (strcmp(pty, "square") == 0) {
+        draw_fn = grid_point_square;
+    } else if (strcmp(pty, "diamond") == 0) {
+        draw_fn = grid_point_diamond;
     } else {
         fprintf(stderr, "Unknown point type: '%s'\n", pty);
         draw_fn = grid_point_round;
