@@ -1245,6 +1245,59 @@ grid_full_rect(grid_context_t *gr, const grid_par_t *par) {
 }
 
 /**
+ * Draw a polygon with vertices at the given coordinates.
+ */
+void
+grid_polygon(grid_context_t *gr, const unit_array_t* xs, const unit_array_t *ys,
+             const grid_par_t *par)
+{
+    grid_apply_parameters(gr, par);
+
+    int x_size = unit_array_size(xs);
+    int y_size = unit_array_size(ys);
+
+    if (x_size <= 0) {
+        fprintf(stderr, "Warning: can't draw 0 length array.\n");
+        return;
+    } else if (x_size != y_size) {
+        fprintf(stderr, "Warning: can't draw arrays of different sizes.\n");
+        return;
+    }
+
+    double *xs_npc = malloc(x_size * sizeof(double));
+    double *ys_npc = malloc(x_size * sizeof(double));
+
+    unit_array_to_npc(xs_npc, gr, 'x', xs);
+    unit_array_to_npc(ys_npc, gr, 'y', ys);
+
+    cairo_matrix_t *m = gr->current_node->npc_to_dev;
+    cairo_matrix_transform_point(m, xs_npc, ys_npc);
+    cairo_new_path(gr->cr);
+    cairo_move_to(gr->cr, xs_npc[0], ys_npc[0]);
+
+    int i;
+    for (i = 1; i < x_size; i++) {
+        cairo_matrix_transform_point(m, xs_npc + i, ys_npc + i);
+        cairo_line_to(gr->cr, xs_npc[i], ys_npc[i]);
+    }
+
+    cairo_close_path(gr->cr);
+
+    rgba_t *fill = Parameter(fill, par, gr->current_node->par, gr->par);
+    if (fill) {
+        rgba_t *color = grid_set_color(gr, fill);
+        cairo_fill_preserve(gr->cr);
+        grid_set_color(gr, color);
+    }
+
+    cairo_stroke(gr->cr);
+    grid_restore_parameters(gr, par);
+
+    free(xs_npc);
+    free(ys_npc);
+}
+
+/**
  * Allocates a \ref unit_t indicating where to place the `x`-coordinate so that
  * text with width `width_npc` has the alignment given by `just`.
  */

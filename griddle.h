@@ -196,6 +196,10 @@ void
 grid_full_rect(grid_context_t*, const grid_par_t*);
 
 void
+grid_polygon(grid_context_t*, const unit_array_t*, const unit_array_t*,
+             const grid_par_t*);
+
+void
 grid_text(grid_context_t*, const char*, const unit_t*, const unit_t*, 
           const grid_par_t*);
 
