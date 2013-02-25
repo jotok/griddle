@@ -37,7 +37,7 @@ main(void) {
 
     unit_array_t x_units = UnitArray(100, x, "native");
     unit_array_t y_units = UnitArray(100, y, "native");
-    grid_set_lwd(gr, unit(5, "px"));
+    grid_set_line_width(gr, unit(5, "px"));
     par = (grid_par_t){.color = &blue};
     grid_lines(gr, &x_units, &y_units, &par);
 
@@ -62,7 +62,7 @@ main(void) {
     par = (grid_par_t){.color = &violet};
     grid_lines(gr, &x_units, &y_units, &par);
 
-    par = (grid_par_t){.lwd = unit(2, "px")};
+    par = (grid_par_t){.line_width = unit(2, "px")};
     grid_xaxis(gr, &par);
     grid_yaxis(gr, &par);
 

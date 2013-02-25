@@ -265,9 +265,9 @@ new_grid_default_par(void) {
     par->color = rgba(0, 0, 0, 1);
     par->fill = NULL;
 
-    char *lty = "solid";
-    par->lty = malloc(strlen(lty) + 1);
-    strcpy(par->lty, lty);
+    char *line_type = "solid";
+    par->line_type = malloc(strlen(line_type) + 1);
+    strcpy(par->line_type, line_type);
 
     char *just = "center";
     par->just = malloc(strlen(just) + 1);
@@ -277,7 +277,7 @@ new_grid_default_par(void) {
     par->vjust = malloc(strlen(vjust) + 1);
     strcpy(par->vjust, vjust);
 
-    par->lwd = unit(2, "px");
+    par->line_width = unit(2, "px");
     par->font_size = unit(20, "px");
 
     return par;
@@ -291,11 +291,11 @@ free_grid_par(grid_par_t *par) {
     if (par->color)
         free(par->color);
 
-    if (par->lty)
-        free(par->lty);
+    if (par->line_type)
+        free(par->line_type);
 
-    if (par->lwd)
-        free(par->lwd);
+    if (par->line_width)
+        free(par->line_width);
 
     free(par);
 }
@@ -709,8 +709,8 @@ static double *grid_dash_pattern1_px = (double[]){10, 5};
 static int grid_dash_pattern1_len = 2;
 
 static void
-grid_apply_lty(grid_context_t *gr, const char *lty) {
-    if (strncmp(lty, "dash", 4) == 0) {
+grid_apply_line_type(grid_context_t *gr, const char *line_type) {
+    if (strncmp(line_type, "dash", 4) == 0) {
         double dash_pattern1_dev[grid_dash_pattern1_len], temp;
         int i;
         unit_t this_unit;
@@ -731,10 +731,10 @@ grid_apply_lty(grid_context_t *gr, const char *lty) {
  * Set the global line type.
  */
 char*
-grid_set_lty(grid_context_t *gr, char *lty) {
-    char *old = gr->par->lty;
-    gr->par->lty = lty;
-    grid_apply_lty(gr, lty);
+grid_set_line_type(grid_context_t *gr, char *line_type) {
+    char *old = gr->par->line_type;
+    gr->par->line_type = line_type;
+    grid_apply_line_type(gr, line_type);
     return old;
 }
 
@@ -759,7 +759,7 @@ grid_set_vjust(grid_context_t *gr, char *vjust) {
 }
 
 static void
-grid_apply_lwd(grid_context_t *gr, const unit_t *lwd) {
+grid_apply_line_width(grid_context_t *gr, const unit_t *lwd) {
     double lwd_npc = unit_to_npc(gr, 'x', lwd);
     double temp = 0;
     cairo_matrix_transform_distance(gr->current_node->npc_to_dev, &lwd_npc, &temp);
@@ -773,10 +773,10 @@ grid_apply_lwd(grid_context_t *gr, const unit_t *lwd) {
  * \return The old line width.
  */
 unit_t*
-grid_set_lwd(grid_context_t *gr, unit_t *lwd) {
-    unit_t *old = gr->par->lwd;
-    gr->par->lwd = lwd;
-    grid_apply_lwd(gr, lwd);
+grid_set_line_width(grid_context_t *gr, unit_t *lwd) {
+    unit_t *old = gr->par->line_width;
+    gr->par->line_width = lwd;
+    grid_apply_line_width(gr, lwd);
     return old;
 }
 
@@ -820,11 +820,11 @@ grid_apply_parameters(grid_context_t *gr, const grid_par_t *par) {
     col = Parameter(color, par, cur, def);
     grid_apply_color(gr, col);
 
-    s = Parameter(lty, par, cur, def);
-    grid_apply_lty(gr, s);
+    s = Parameter(line_type, par, cur, def);
+    grid_apply_line_type(gr, s);
 
-    u = Parameter(lwd, par, cur, def);
-    grid_apply_lwd(gr, u);
+    u = Parameter(line_width, par, cur, def);
+    grid_apply_line_width(gr, u);
 
     u = Parameter(font_size, par, cur, def);
     grid_apply_font_size(gr, u);
@@ -850,14 +850,14 @@ grid_restore_parameters(grid_context_t *gr, const grid_par_t *par) {
             grid_apply_color(gr, col);
         }
 
-        if (par->lty) {
-            s = Parameter(lty, nil, cur, def);
-            grid_apply_lty(gr, s);
+        if (par->line_type) {
+            s = Parameter(line_type, nil, cur, def);
+            grid_apply_line_type(gr, s);
         }
 
-        if (par->lwd) {
-            u = Parameter(lwd, nil, cur, def);
-            grid_apply_lwd(gr, u);
+        if (par->line_width) {
+            u = Parameter(line_width, nil, cur, def);
+            grid_apply_line_width(gr, u);
         }
 
         if (par->font_size) {
@@ -995,6 +995,15 @@ grid_lines(grid_context_t  *gr, const unit_array_t *xs, const unit_array_t *ys,
 
     free(xs_npc);
     free(ys_npc);
+}
+
+/**
+ * Draw a point at the given coordinates.
+ */
+void
+grid_point(grid_context_t *gr, const unit_t *x, const unit_t *y, 
+           const grid_par_t *par) 
+{
 }
 
 /**

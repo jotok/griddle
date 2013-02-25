@@ -21,8 +21,8 @@ typedef struct {
  */
 typedef struct {
     rgba_t *color, *fill;
-    char *lty, *just, *vjust;
-    unit_t *lwd, *font_size;
+    char *line_type, *just, *vjust;
+    unit_t *line_width, *font_size;
 } grid_par_t;
 
 /**
@@ -150,7 +150,7 @@ rgba_t*
 grid_set_fill(grid_context_t*, rgba_t*);
 
 char*
-grid_set_lty(grid_context_t*, char*);
+grid_set_line_type(grid_context_t*, char*);
 
 char*
 grid_set_just(grid_context_t*, char*);
@@ -159,7 +159,7 @@ char*
 grid_set_vjust(grid_context_t*, char*);
 
 unit_t*
-grid_set_lwd(grid_context_t*, unit_t*);
+grid_set_line_width(grid_context_t*, unit_t*);
 
 unit_t*
 grid_set_font_size(grid_context_t*, unit_t*);

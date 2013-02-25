@@ -7,7 +7,7 @@ int
 main(void) {
     grid_context_t *gr = new_grid_context(800, 800);
 
-    grid_par_t par = {.lty = "dash", .fill = &lightbg1};
+    grid_par_t par = {.line_type = "dash", .fill = &lightbg1};
     grid_full_rect(gr, &par);
 
     grid_viewport_t *vp1 = new_grid_viewport(
